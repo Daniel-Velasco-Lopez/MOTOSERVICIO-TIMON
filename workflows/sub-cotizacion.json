@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Cotización de Servicios",
+    "nodes": [
+      {
+        "id": "b2c3d4e5-0001-4000-8000-000000000001",
+        "name": "Inicio Sub-workflow",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "b2c3d4e5-0002-4000-8000-000000000002",
+        "name": "Generar Respuesta Cotización",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          450,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Generar respuesta de cotización\nconst inputData = $input.first().json;\nconst mensaje = inputData.mensaje || '';\nconst telefono = inputData.telefono || '';\nconst nombre = inputData.nombre || '';\n\n// Lista de precios de referencia\nconst precios = {\n  'cambio de aceite': '🔧 *Cambio de Aceite*: $250 - $450 (según tipo de aceite)',\n  'aceite': '🔧 *Cambio de Aceite*: $250 - $450 (según tipo de aceite)',\n  'frenos': '🔧 *Revisión y Cambio de Frenos*: \\n- Balatas: $350 - $600\\n- Liquido de frenos: $150\\n- Rectificación de disco: $400',\n  'llanta': '🔧 *Llanta*: $800 - $2,500 (según marca y medida)',\n  'llantas': '🔧 *Llanta*: $800 - $2,500 (según marca y medida)',\n  'cadena': '🔧 *Cadena de Transmisión*: \\n- Cadena: $450 - $900\\n- Kit de arrastre (catalina + piñon): $600 - $1,200',\n  'bateria': '🔧 *Batería*: $600 - $1,500 (según modelo)',\n  'batería': '🔧 *Batería*: $600 - $1,500 (según modelo)',\n  'afinacion': '🔧 *Afinación*: $800 - $1,500 (incluye bujías, filtros y carburación)',\n  'afinación': '🔧 *Afinación*: $800 - $1,500 (incluye bujías, filtros y carburación)',\n  'suspension': '🔧 *Suspensión*: \\n- Horquilla delantera: $500 - $1,000\\n- Amortiguadores traseros: $800 - $2,000',\n  'suspensión': '🔧 *Suspensión*: \\n- Horquilla delantera: $500 - $1,000\\n- Amortiguadores traseros: $800 - $2,000',\n  'revision': '🔧 *Revisión General*: $300 (aplica con cualquier servicio)',\n  'revisión': '🔧 *Revisión General*: $300 (aplica con cualquier servicio)',\n  'escapes': '🔧 *Sistema de Escape*: \\n- Reparación: $400 - $800\\n- Cambio de silenciador: $600 - $2,000',\n  'escape': '🔧 *Sistema de Escape*: \\n- Reparación: $400 - $800\\n- Cambio de silenciador: $600 - $2,000',\n  'luces': '🔧 *Sistema Eléctrico* (luces, direccionales): $200 - $600',\n  'electrico': '🔧 *Sistema Eléctrico*: $300 - $1,000 (según diagnóstico)',\n  'eléctrico': '🔧 *Sistema Eléctrico*: $300 - $1,000 (según diagnóstico)',\n  'carburacion': '🔧 *Carburación / Inyección*: \\n- Limpieza de carburador: $400\\n- Sincronización: $300\\n- Calibración de inyectores: $600',\n  'carburación': '🔧 *Carburación / Inyección*: \\n- Limpieza de carburador: $400\\n- Sincronización: $300\\n- Calibración de inyectores: $600'\n};\n\n// Buscar servicio solicitado en el mensaje\nconst mensajeLower = mensaje.toLowerCase();\nlet respuesta = '';\nlet serviciosEncontrados = [];\n\nfor (const [keyword, precio] of Object.entries(precios)) {\n  if (mensajeLower.includes(keyword)) {\n    serviciosEncontrados.push(precio);\n  }\n}\n\nif (serviciosEncontrados.length > 0) {\n  respuesta = 'Hola ' + (nombre || '') + ', gracias por contactarnos. 😊\\n\\n'\n    + 'Aquí tienes nuestros precios de referencia:\\n\\n'\n    + serviciosEncontrados.join('\\n\\n')\n    + '\\n\\n⚠️ *Nota*: Los precios pueden variar según el modelo y año de tu moto.\\n'\n    + 'Te recomendamos pasar al taller para una cotización precisa y sin costo.\\n\\n'\n    + '📍 Calle Principal #123, Col. Centro\\n'\n    + '📞 Tel: 123-456-7890';\n} else {\n  respuesta = 'Hola ' + (nombre || '') + ', gracias por contactarnos. 😊\\n\\n'\n    + 'Con gusto te proporcionamos nuestros *precios de referencia*:\\n\\n'\n    + '🔧 *Cambio de Aceite*: $250 - $450\\n'\n    + '🔧 *Afinación General*: $800 - $1,500\\n'\n    + '🔧 *Frenos (balatas + rectificación)*: $350 - $1,000\\n'\n    + '🔧 *Llanta*: $800 - $2,500\\n'\n    + '🔧 *Cadena y Arrastre*: $450 - $1,200\\n'\n    + '🔧 *Batería*: $600 - $1,500\\n'\n    + '🔧 *Revisión General*: $300\\n\\n'\n    + '¿Podrías indicarnos qué servicio en particular te interesa?\\n'\n    + 'Con gusto te damos un precio más exacto. 😊\\n\\n'\n    + '📍 Calle Principal #123, Col. Centro';\n}\n\nreturn [\n  {\n    json: {\n      telefono: telefono,\n      mensaje: mensaje,\n      respuesta: respuesta,\n      categoria: 'COTIZACION'\n    }\n  }\n];"
+        }
+      }
+    ],
+    "connections": {
+      "Inicio Sub-workflow": {
+        "main": [
+          [
+            {
+              "node": "Generar Respuesta Cotización",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "saveManualExecutions": true,
+      "callerPolicy": "workflowsFromSameOwner",
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+      {
+        "name": "cotizacion",
+        "id": "tag-cotizacion"
+      },
+      {
+        "name": "motoservicio",
+        "id": "tag-motoservicio"
+      }
+    ],
+    "id": "3CSG9wyrQA",
+    "versionId": "9f2bf39f-2c7d-4564-a385-b357ae7c00c9",
+    "pinData": {},
+    "createdAt": "2026-05-18T14:23:03.458Z",
+    "updatedAt": "2026-05-18T14:23:03.458Z"
+  }
+]

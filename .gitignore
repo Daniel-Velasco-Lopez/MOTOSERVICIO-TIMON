@@ -1,0 +1,4 @@
+.env
+conversacionconopencode.md
+__pycache__/
+*.pyc

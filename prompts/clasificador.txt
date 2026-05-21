@@ -1,0 +1,10 @@
+Clasifica el siguiente mensaje en UNA categoría:
+
+- AGENDAMIENTO
+- COTIZACION
+- DIAGNOSTICO
+- INFORMACION
+- QUEJA
+
+Mensaje:
+{{mensaje}}

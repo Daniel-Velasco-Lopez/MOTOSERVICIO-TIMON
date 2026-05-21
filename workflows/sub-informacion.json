@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Información General del Taller",
+    "nodes": [
+      {
+        "id": "d4e5f6a7-0001-4000-8000-000000000001",
+        "name": "Inicio Sub-workflow",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "d4e5f6a7-0002-4000-8000-000000000002",
+        "name": "Generar Respuesta Información",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          450,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Generar respuesta con información general del taller\nconst inputData = $input.first().json;\nconst mensaje = (inputData.mensaje || '').toLowerCase();\nconst telefono = inputData.telefono || '';\nconst nombre = inputData.nombre || '';\n\nlet respuesta = '¡Hola ' + (nombre || '') + '! 😊\\n\\n';\n\n// Detectar tipo de información solicitada\nif (/horario|hora|abren|cierran|abierto|abrimos/i.test(mensaje)) {\n  respuesta += '🕐 *Horarios de Atención:*\\n\\n'\n    + 'Lunes a Viernes: 9:00 AM - 6:00 PM\\n'\n    + 'Sábados: 9:00 AM - 2:00 PM\\n'\n    + 'Domingos: Cerrado\\n\\n'\n    + '¡Estamos listos para atenderte! 🛵';\n} else if (/direccion|dirección|ubicación|ubicacion|dónde están|donde estan|calle|cómo llegar|mapa/i.test(mensaje)) {\n  respuesta += '📍 *Ubicación:*\\n\\n'\n    + 'Calle Principal #123, Col. Centro\\n'\n    + 'C.P. 80000, Culiacán, Sinaloa\\n\\n'\n    + 'Estamos a una cuadra del parque central, frente a la farmacia. ¡Fácil de encontrar! 🗺️';\n} else if (/pago|pagar|tarjeta|efectivo|transferencia|crédito|débito|formas de pago/i.test(mensaje)) {\n  respuesta += '💳 *Formas de Pago:*\\n\\n'\n    + '✅ Efectivo\\n'\n    + '✅ Tarjeta de débito\\n'\n    + '✅ Tarjeta de crédito (Visa, Mastercard)\\n'\n    + '✅ Transferencia bancaria\\n'\n    + '✅ Mercado Pago\\n\\n'\n    + 'Aceptamos todas las formas de pago para tu comodidad. 😊';\n} else if (/tiempo|demora|tarda|entrega|lleva|listo/i.test(mensaje)) {\n  respuesta += '⏱️ *Tiempos de Servicio:*\\n\\n'\n    + '🔧 *Cambio de aceite:* 30 min\\n'\n    + '🔧 *Frenos:* 1-2 hrs\\n'\n    + '🔧 *Afinación:* 2-3 hrs\\n'\n    + '🔧 *Suspensión:* 2-4 hrs\\n'\n    + '🔧 *Revisión general:* 30 min\\n'\n    + '🔧 *Diagnóstico completo:* 1 hr\\n\\n'\n    + 'Los tiempos pueden variar según la carga de trabajo del taller. ¡Te avisamos cuando esté lista! 🛵';\n} else if (/servicio|ofrecen|hacen|reparación|reparacion|mantenimiento/i.test(mensaje)) {\n  respuesta += '🔧 *Servicios que Ofrecemos:*\\n\\n'\n    + '✅ Cambio de aceite y filtros\\n'\n    + '✅ Frenos (balatas, líquido, rectificación)\\n'\n    + '✅ Afinación general\\n'\n    + '✅ Suspensión (horquillas, amortiguadores)\\n'\n    + '✅ Sistema eléctrico (luces, batería, arranque)\\n'\n    + '✅ Carburación e inyección electrónica\\n'\n    + '✅ Transmisión (cadena, catalina, piñón)\\n'\n    + '✅ Llantas (venta y montaje)\\n'\n    + '✅ Diagnóstico computarizado\\n'\n    + '✅ Reparación de escapes\\n'\n    + '✅ Servicio completo de pintura\\n\\n'\n    + '¿Qué servicio necesitas? Con gusto te damos más detalles. 😊';\n} else {\n  // Respuesta general con toda la información\n  respuesta += 'Bienvenido a *Moto Servicios TIMON* 🛵🔧\\n\\n'\n    + 'Somos tu taller de confianza para el mantenimiento y reparación de motocicletas.\\n\\n'\n    + '📍 *Ubicación:* Calle Principal #123, Col. Centro\\n'\n    + '🕐 *Horario:* Lun-Sáb 9:00 AM - 6:00 PM (Sáb hasta 2PM)\\n'\n    + '📞 *Teléfono:* 123-456-7890\\n'\n    + '💳 *Pago:* Efectivo, tarjeta, transferencia\\n\\n'\n    + '¿En qué podemos ayudarte? Pregunta por servicios, precios, horarios o lo que necesites. 😊';\n}\n\nreturn [\n  {\n    json: {\n      telefono: telefono,\n      mensaje: inputData.mensaje || '',\n      respuesta: respuesta,\n      categoria: 'INFORMACION'\n    }\n  }\n];"
+        }
+      }
+    ],
+    "connections": {
+      "Inicio Sub-workflow": {
+        "main": [
+          [
+            {
+              "node": "Generar Respuesta Información",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "saveManualExecutions": true,
+      "callerPolicy": "workflowsFromSameOwner",
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+      {
+        "name": "informacion",
+        "id": "tag-informacion"
+      },
+      {
+        "name": "motoservicio",
+        "id": "tag-motoservicio"
+      }
+    ],
+    "id": "kTbFQvvZ3k",
+    "versionId": "668f7614-0a74-42b0-847f-8b5bd910a07a",
+    "pinData": {},
+    "createdAt": "2026-05-18T14:23:03.463Z",
+    "updatedAt": "2026-05-18T14:23:03.463Z"
+  }
+]

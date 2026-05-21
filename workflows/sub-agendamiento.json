@@ -1,0 +1,233 @@
+[
+  {
+    "name": "Agendamiento de Citas",
+    "nodes": [
+      {
+        "id": "a1b2c3d4-0001-4000-8000-000000000001",
+        "name": "Inicio Sub-workflow",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "a1b2c3d4-0002-4000-8000-000000000002",
+        "name": "Buscar Cliente",
+        "type": "n8n-nodes-base.mySql",
+        "typeVersion": 2,
+        "position": [
+          450,
+          300
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, nombre, telefono FROM clientes WHERE telefono = '{{ $json.telefono }}' LIMIT 1",
+          "options": {}
+        },
+        "credentials": {
+          "mySql": {
+            "id": "eN5cnOwV",
+            "name": "MySQL motoservicio"
+          }
+        }
+      },
+      {
+        "id": "a1b2c3d4-0003-4000-8000-000000000003",
+        "name": "Cliente Existe",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          650,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "number": [],
+            "string": [
+              {
+                "value1": "={{ $json.length > 0 }}",
+                "operation": "equal",
+                "value2": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "a1b2c3d4-0004-4000-8000-000000000004",
+        "name": "Registrar Cliente Nuevo",
+        "type": "n8n-nodes-base.mySql",
+        "typeVersion": 2,
+        "position": [
+          850,
+          200
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO clientes (nombre, telefono) VALUES ('{{ $json.nombre || 'Cliente' }}', '{{ $json.telefono }}')",
+          "options": {}
+        },
+        "credentials": {
+          "mySql": {
+            "id": "eN5cnOwV",
+            "name": "MySQL motoservicio"
+          }
+        }
+      },
+      {
+        "id": "a1b2c3d4-0005-4000-8000-000000000005",
+        "name": "Obtener Nuevo ID",
+        "type": "n8n-nodes-base.mySql",
+        "typeVersion": 2,
+        "position": [
+          1050,
+          200
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, nombre, telefono FROM clientes WHERE telefono = '{{ $json.telefono }}' LIMIT 1",
+          "options": {}
+        },
+        "credentials": {
+          "mySql": {
+            "id": "eN5cnOwV",
+            "name": "MySQL motoservicio"
+          }
+        }
+      },
+      {
+        "id": "a1b2c3d4-0006-4000-8000-000000000006",
+        "name": "Consultar Citas Próximas",
+        "type": "n8n-nodes-base.mySql",
+        "typeVersion": 2,
+        "position": [
+          850,
+          400
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT c.fecha, c.hora, c.servicio, c.estado\nFROM citas c\nWHERE c.cliente_id = {{ $json.cliente_id }}\n  AND c.estado != 'CANCELADA'\n  AND c.fecha >= CURDATE()\nORDER BY c.fecha ASC\nLIMIT 5",
+          "options": {}
+        },
+        "credentials": {
+          "mySql": {
+            "id": "eN5cnOwV",
+            "name": "MySQL motoservicio"
+          }
+        }
+      },
+      {
+        "id": "a1b2c3d4-0007-4000-8000-000000000007",
+        "name": "Generar Respuesta Agendamiento",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1250,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Generar respuesta para agendamiento usando Gemini\n// Recuperar datos de entrada\nconst inputData = $input.first().json;\nconst mensaje = inputData.mensaje || '';\nconst telefono = inputData.telefono || '';\nconst nombre = inputData.nombre || '';\n\n// Verificar citas existentes (vienen del nodo anterior)\nconst citasProximas = $json;\nconst clienteId = inputData.clienteId || (citasProximas[0] && citasProximas[0].cliente_id) || null;\n\nlet respuesta = '';\n\n// Detectar intención del mensaje\nconst mensajeLower = mensaje.toLowerCase();\nconst esCancelacion = /cancelar|cancelación|eliminar|borrar|anular/i.test(mensajeLower);\nconst esReprogramacion = /reprogramar|cambiar|modificar|recorrer|correr/i.test(mensajeLower);\nconst esAgendamiento = /agendar|agendamiento|programar|reservar|separar/i.test(mensajeLower) || !esCancelacion;\n\nif (esCancelacion && citasProximas && citasProximas.length > 0) {\n  respuesta = 'Hola ' + (nombre || '') + ', hemos recibido tu solicitud de cancelación. '\n    + 'Tienes ' + citasProximas.length + ' cita(s) próxima(s):\\n';\n  citasProximas.forEach(function(cita, i) {\n    respuesta += (i + 1) + '. ' + cita.fecha + ' a las ' + cita.hora + ' - ' + (cita.servicio || 'Sin especificar') + '\\n';\n  });\n  respuesta += '\\nPor favor, indícanos qué cita deseas cancelar para procesarlo.';\n} else if (esReprogramacion && citasProximas && citasProximas.length > 0) {\n  respuesta = 'Hola ' + (nombre || '') + ', podemos ayudarte a reprogramar tu cita. '\n    + 'Actualmente tienes:\\n';\n  citasProximas.forEach(function(cita, i) {\n    respuesta += (i + 1) + '. ' + cita.fecha + ' a las ' + cita.hora + ' - ' + (cita.servicio || 'Sin especificar') + '\\n';\n  });\n  respuesta += '\\n¿Qué fecha y hora prefieres para tu nueva cita?';\n} else {\n  // Nuevo agendamiento\n  respuesta = '¡Hola ' + (nombre || '') + '! 😊\\n\\n'\n    + 'Con gusto te ayudamos a agendar tu servicio en *Moto Servicios TIMON*.\\n\\n'\n    + 'Por favor, indícanos:\\n'\n    + '1️⃣ ¿Qué servicio necesitas? (Ej: cambio de aceite, afinación, revisión general)\\n'\n    + '2️⃣ ¿Qué día te gustaría pasar?\\n'\n    + '3️⃣ ¿Prefieres horario matutino (9am-1pm) o vespertino (2pm-6pm)?\\n\\n'\n    + '📅 Horarios de atención:\\n'\n    + 'Lunes a viernes: 9:00 AM - 6:00 PM\\n'\n    + 'Sábados: 9:00 AM - 2:00 PM\\n'\n    + '📍 Calle Principal #123, Col. Centro';\n}\n\nreturn [\n  {\n    json: {\n      telefono: telefono,\n      mensaje: mensaje,\n      respuesta: respuesta,\n      categoria: 'AGENDAMIENTO',\n      cliente_id: clienteId\n    }\n  }\n];"
+        }
+      }
+    ],
+    "connections": {
+      "Inicio Sub-workflow": {
+        "main": [
+          [
+            {
+              "node": "Buscar Cliente",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar Cliente": {
+        "main": [
+          [
+            {
+              "node": "Cliente Existe",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cliente Existe": {
+        "main": [
+          [
+            {
+              "node": "Consultar Citas Próximas",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Registrar Cliente Nuevo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar Cliente Nuevo": {
+        "main": [
+          [
+            {
+              "node": "Obtener Nuevo ID",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obtener Nuevo ID": {
+        "main": [
+          [
+            {
+              "node": "Generar Respuesta Agendamiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consultar Citas Próximas": {
+        "main": [
+          [
+            {
+              "node": "Generar Respuesta Agendamiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "saveManualExecutions": true,
+      "callerPolicy": "workflowsFromSameOwner",
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+      {
+        "name": "agendamiento",
+        "id": "tag-agendamiento"
+      },
+      {
+        "name": "motoservicio",
+        "id": "tag-motoservicio"
+      }
+    ],
+    "id": "h57mbvXTnE",
+    "versionId": "c4ae9b87-5f3c-4fe0-9535-1212cde7374e",
+    "pinData": {},
+    "createdAt": "2026-05-18T14:23:03.309Z",
+    "updatedAt": "2026-05-18T14:23:03.450Z"
+  }
+]

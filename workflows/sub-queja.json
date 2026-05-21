@@ -1,0 +1,129 @@
+[
+  {
+    "name": "Quejas y Soporte",
+    "nodes": [
+      {
+        "id": "e5f6a7b8-0001-4000-8000-000000000001",
+        "name": "Inicio Sub-workflow",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "e5f6a7b8-0002-4000-8000-000000000002",
+        "name": "Buscar Cliente Queja",
+        "type": "n8n-nodes-base.mySql",
+        "typeVersion": 2,
+        "position": [
+          450,
+          300
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT id, nombre, telefono FROM clientes WHERE telefono = '{{ $json.telefono }}' LIMIT 1",
+          "options": {}
+        },
+        "credentials": {
+          "mySql": {
+            "id": "eN5cnOwV",
+            "name": "MySQL motoservicio"
+          }
+        }
+      },
+      {
+        "id": "e5f6a7b8-0003-4000-8000-000000000003",
+        "name": "Obtener Últimas Citas",
+        "type": "n8n-nodes-base.mySql",
+        "typeVersion": 2,
+        "position": [
+          650,
+          300
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT c.fecha, c.hora, c.servicio, c.estado\nFROM citas c\nWHERE c.cliente_id = {{ $json.cliente_id }}\nORDER BY c.fecha DESC\nLIMIT 3",
+          "options": {}
+        },
+        "credentials": {
+          "mySql": {
+            "id": "eN5cnOwV",
+            "name": "MySQL motoservicio"
+          }
+        }
+      },
+      {
+        "id": "e5f6a7b8-0004-4000-8000-000000000004",
+        "name": "Generar Respuesta Queja",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          850,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Generar respuesta para quejas\nconst inputData = $input.first().json;\nconst mensaje = inputData.mensaje || '';\nconst telefono = inputData.telefono || '';\nconst nombre = inputData.nombre || '';\n\n// Recuperar datos del cliente y citas previas\nconst clienteData = inputData;\nconst citasPrevias = $json;\n\nlet respuesta = 'Hola ' + (nombre || '') + ', lamentamos mucho que hayas tenido una mala experiencia. 😔\\n\\n'\n  + 'En *Moto Servicios TIMON* nos tomamos muy en serio tu satisfacción. '\n  + 'Hemos registrado tu queja y la revisaremos a la brevedad.\\n\\n';\n\n// Si hay citas previas, mencionarlas para contexto\nif (citasPrevias && citasPrevias.length > 0) {\n  respuesta += '📋 *Tus servicios recientes:*\\n';\n  citasPrevias.forEach(function(cita) {\n    respuesta += '  • ' + cita.fecha + ' - ' + (cita.servicio || 'Servicio') + ' (' + (cita.estado || 'Completado') + ')\\n';\n  });\n  respuesta += '\\n';\n}\n\nrespuesta += '🔴 *Tu queja ha sido turnada al área de atención.*\\n\\n'\n  + 'Un asesor se comunicará contigo al número ' + telefono + ' en un máximo de 24 horas hábiles para dar seguimiento a tu caso.\\n\\n'\n  + 'Si deseas hablar directamente con un administrador, puedes llamarnos al 📞 123-456-7890.\\n\\n'\n  + 'Gracias por ayudarnos a mejorar. 🙏';\n\nreturn [\n  {\n    json: {\n      telefono: telefono,\n      mensaje: mensaje,\n      respuesta: respuesta,\n      categoria: 'QUEJA',\n      requiere_atencion: true\n    }\n  }\n];"
+        }
+      }
+    ],
+    "connections": {
+      "Inicio Sub-workflow": {
+        "main": [
+          [
+            {
+              "node": "Buscar Cliente Queja",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar Cliente Queja": {
+        "main": [
+          [
+            {
+              "node": "Obtener Últimas Citas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obtener Últimas Citas": {
+        "main": [
+          [
+            {
+              "node": "Generar Respuesta Queja",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "saveManualExecutions": true,
+      "callerPolicy": "workflowsFromSameOwner",
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+      {
+        "name": "quejas",
+        "id": "tag-quejas"
+      },
+      {
+        "name": "motoservicio",
+        "id": "tag-motoservicio"
+      }
+    ],
+    "id": "p7KGqF7Raws",
+    "versionId": "67a41589-a4c1-4d04-9e97-0b5acf8aa71f",
+    "pinData": {},
+    "createdAt": "2026-05-18T14:23:03.465Z",
+    "updatedAt": "2026-05-18T14:23:03.465Z"
+  }
+]

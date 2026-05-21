@@ -1,0 +1,454 @@
+[
+  {
+    "name": "Recepción y Clasificación de Mensajes",
+    "nodes": [
+      {
+        "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+        "name": "Webhook Evolution",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {
+          "path": "whatsapp-webhook",
+          "options": {},
+          "httpMethod": "POST",
+          "responseMode": "responseNode",
+          "responseData": "allEntries",
+          "webhookId": "whatsapp-webhook"
+        },
+        "webhookId": "whatsapp-webhook"
+      },
+      {
+        "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Extraer Mensaje",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          450,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nlet telefono = '';\nlet mensaje = '';\nlet nombre = '';\nlet remoteJid = '';\n\nif (body.data) {\n  const key = body.data.key || {};\n  remoteJid = key.remoteJidAlt || key.remoteJid || '';\n  telefono = remoteJid.split('@')[0];\n\n  mensaje = body.data.message?.conversation ||\n            body.data.message?.extendedTextMessage?.text ||\n            '';\n\n  nombre = body.data.pushName || '';\n} else {\n  telefono = body.telefono || body.from || body.sender || '';\n  mensaje = body.mensaje || body.message || body.text || '';\n  nombre = body.nombre || body.pushName || '';\n  remoteJid = telefono ? telefono + '@s.whatsapp.net' : '';\n}\n\nreturn [\n  {\n    json: {\n      telefono: telefono.replace(/[^0-9]/g, ''),\n      mensaje: mensaje.trim(),\n      nombre: nombre,\n      remoteJid: remoteJid\n    }\n  }\n];"
+        }
+      },
+      {
+        "id": "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Preparar Prompt Gemini",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          600,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const mensaje = $json.mensaje;\nconst prompt = 'Eres un clasificador de mensajes para un taller de motos.\\nClasifica el siguiente mensaje en UNA categoría:\\n- AGENDAMIENTO\\n- COTIZACION\\n- DIAGNOSTICO\\n- INFORMACION\\n- QUEJA\\n\\nResponde SOLO la categoría en mayúsculas.\\n\\nMensaje: ' + mensaje;\n\nreturn [{\n  json: {\n    telefono: $json.telefono,\n    mensaje: mensaje,\n    nombre: $json.nombre,\n    gemini_prompt: prompt\n  }\n}];"
+        }
+      },
+      {
+        "id": "6ba7b821-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Llamar Gemini",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          900,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const prompt = $json.gemini_prompt;\n\nlet candidates = [];\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyAYENPhJrZUhLAEE-BjYzofiTkbIN3rc0I',\n    headers: {\n      'Content-Type': 'application/json'\n    },\n    body: {\n      contents: [{ parts: [{ text: prompt }] }],\n      generationConfig: { temperature: 0.1, maxOutputTokens: 50 }\n    }\n  });\n  candidates = response.candidates || [];\n} catch (error) {\n  candidates = [{ content: { parts: [{ text: 'INFORMACION (error: ' + error.message + ')' }] } }];\n}\n\nreturn [{\n  json: {\n    telefono: $json.telefono,\n    mensaje: $json.mensaje,\n    nombre: $json.nombre,\n    candidates: candidates\n  }\n}];"
+        }
+      },
+      {
+        "id": "6ba7b823-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Procesar Categoría",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1050,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const originalData = $json;\nconst geminiText = $json.candidates?.[0]?.content?.parts?.[0]?.text || '';\nconst categoria = geminiText.trim().toUpperCase();\n\nreturn [{\n  json: {\n    telefono: originalData.telefono,\n    mensaje: originalData.mensaje,\n    nombre: originalData.nombre,\n    categoria: ['AGENDAMIENTO','COTIZACION','DIAGNOSTICO','INFORMACION','QUEJA'].includes(categoria) ? categoria : 'INFORMACION'\n  }\n}];"
+        }
+      },
+      {
+        "id": "6ba7b812-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Switch Categoría",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 2,
+        "position": [
+          1250,
+          300
+        ],
+        "parameters": {
+          "mode": "rules",
+          "dataType": "string",
+          "value1": "={{ $json.categoria }}",
+          "rules": {
+            "rules": [
+              {
+                "operation": "equal",
+                "value2": "AGENDAMIENTO",
+                "outputKey": "agendamiento"
+              },
+              {
+                "operation": "equal",
+                "value2": "COTIZACION",
+                "outputKey": "cotizacion"
+              },
+              {
+                "operation": "equal",
+                "value2": "DIAGNOSTICO",
+                "outputKey": "diagnostico"
+              },
+              {
+                "operation": "equal",
+                "value2": "INFORMACION",
+                "outputKey": "informacion"
+              },
+              {
+                "operation": "equal",
+                "value2": "QUEJA",
+                "outputKey": "queja"
+              }
+            ]
+          },
+          "fallbackOutput": 3
+        }
+      },
+      {
+        "id": "6ba7b813-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Agendamiento",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1,
+        "position": [
+          1050,
+          100
+        ],
+        "parameters": {
+          "workflowId": "h57mbvXTnE",
+          "options": {}
+        }
+      },
+      {
+        "id": "6ba7b814-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Cotización",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1,
+        "position": [
+          1050,
+          220
+        ],
+        "parameters": {
+          "workflowId": "3CSG9wyrQA",
+          "options": {}
+        }
+      },
+      {
+        "id": "6ba7b815-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Diagnóstico",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1,
+        "position": [
+          1050,
+          340
+        ],
+        "parameters": {
+          "workflowId": "DBwZWWogobA",
+          "options": {}
+        }
+      },
+      {
+        "id": "6ba7b816-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Información",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1,
+        "position": [
+          1050,
+          460
+        ],
+        "parameters": {
+          "workflowId": "kTbFQvvZ3k",
+          "options": {}
+        }
+      },
+      {
+        "id": "6ba7b817-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Queja",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1,
+        "position": [
+          1050,
+          580
+        ],
+        "parameters": {
+          "workflowId": "p7KGqF7Raws",
+          "options": {}
+        }
+      },
+      {
+        "id": "6ba7b818-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Registrar Conversación",
+        "type": "n8n-nodes-base.mySql",
+        "typeVersion": 2,
+        "position": [
+          1250,
+          300
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "INSERT INTO conversaciones (cliente_id, mensaje, respuesta)\nVALUES (\n  (SELECT id FROM clientes WHERE telefono = '{{ $json.telefono }}' LIMIT 1),\n  '{{ $json.mensaje }}',\n  '{{ $json.respuesta }}'\n)",
+          "options": {}
+        },
+        "credentials": {
+          "mySql": {
+            "id": "eN5cnOwV",
+            "name": "MySQL motoservicio"
+          }
+        }
+      },
+      {
+        "id": "6ba7b819-9dad-11d1-80b4-00c04fd430c8",
+        "name": "Enviar Respuesta WhatsApp",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1450,
+          300
+        ],
+        "parameters": {
+          "jsCode": "// Enviar respuesta a WhatsApp usando Evolution API\nconst telefono = $json.telefono;\nconst respuesta = $json.respuesta;\n\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'http://evolution:8080/message/sendText/timonws',\n    headers: {\n      'apikey': 'evotimon2026',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      number: telefono,\n      text: respuesta\n    }\n  });\n  return [{ json: { success: true, categoria: $json.categoria, respuesta: respuesta, evolutionResponse: response } }];\n} catch (error) {\n  return [{ json: { success: false, categoria: $json.categoria, respuesta: respuesta, error: error.message } }];\n}"
+        }
+      },
+      {
+        "id": "6ba7b820-9dad-11d1-80b4-00c04fd430c9",
+        "name": "Responder Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1650,
+          300
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ success: true, categoria: $json.categoria, respuesta: $json.respuesta }) }}"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Evolution": {
+        "main": [
+          [
+            {
+              "node": "Extraer Mensaje",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extraer Mensaje": {
+        "main": [
+          [
+            {
+              "node": "Preparar Prompt Gemini",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar Prompt Gemini": {
+        "main": [
+          [
+            {
+              "node": "Llamar Gemini",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar Gemini": {
+        "main": [
+          [
+            {
+              "node": "Procesar Categoría",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Procesar Categoría": {
+        "main": [
+          [
+            {
+              "node": "Switch Categoría",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch Categoría": {
+        "main": [
+          [
+            {
+              "node": "Agendamiento",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Cotización",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Diagnóstico",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Información",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Queja",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agendamiento": {
+        "main": [
+          [
+            {
+              "node": "Registrar Conversación",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Enviar Respuesta WhatsApp",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cotización": {
+        "main": [
+          [
+            {
+              "node": "Registrar Conversación",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Enviar Respuesta WhatsApp",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Diagnóstico": {
+        "main": [
+          [
+            {
+              "node": "Registrar Conversación",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Enviar Respuesta WhatsApp",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Información": {
+        "main": [
+          [
+            {
+              "node": "Registrar Conversación",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Enviar Respuesta WhatsApp",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Queja": {
+        "main": [
+          [
+            {
+              "node": "Registrar Conversación",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Enviar Respuesta WhatsApp",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar Conversación": {
+        "main": [
+          []
+        ]
+      },
+      "Enviar Respuesta WhatsApp": {
+        "main": [
+          [
+            {
+              "node": "Responder Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "saveManualExecutions": true,
+      "callerPolicy": "workflowsFromSameOwner",
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+      {
+        "name": "whatsapp",
+        "id": "tag-whatsapp"
+      },
+      {
+        "name": "motoservicio",
+        "id": "tag-motoservicio"
+      }
+    ],
+    "id": "x8kMEJ0RzI8",
+    "versionId": "9a6ea7e7-0943-4e94-9035-fcabbc0aa66c",
+    "pinData": {},
+    "createdAt": "2026-05-18T14:23:03.468Z",
+    "updatedAt": "2026-05-18T14:23:03.468Z"
+  }
+]
