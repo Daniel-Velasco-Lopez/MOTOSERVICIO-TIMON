@@ -2,3 +2,16 @@
 conversacionconopencode.md
 __pycache__/
 *.pyc
+n8n_cookies*.txt
+wf_*.json
+wf_backup*.json
+wf_current*.json
+wf_final*.json
+wf_import*.json
+wf_latest*.json
+wf_update*.json
+updated_workflow.json
+pg_*.json
+login_body.json
+qr_*.png
+update_active_version*.sql

@@ -30,13 +30,29 @@ IA
 MySQL
 
 ## Estado actual
-- Planeación de arquitectura
-- Diseño de workflows
-- Diseño de base de datos
+- ✅ Docker corriendo con 4 contenedores (n8n, Evolution API, PostgreSQL, MySQL)
+- ✅ n8n configurado con usuario (Daniel Lopez - richichinchin8@gmail.com)
+- ✅ Workflows importados y activos en n8n
+- ✅ Evolution API conectada a WhatsApp (instancia `timonws`)
+- ✅ Webhook configurado en Evolution API → n8n
+- ✅ Base de datos MySQL con tablas `clientes`, `citas`, `conversaciones`
+- ❌ **Gemini API: CUOTA DEL PLAN GRATUITO AGOTADA** — Se necesita una nueva API Key o habilitar facturación
+- ⚠️ Pendiente: Activar workflow `principal-recepcion-fixed.json` una vez renovada la API Key de Gemini
 
 ---
 
 ## Bitácora de cambios
+
+### 2026-05-27 - Correcciones y diagnóstico
+- **Inicio de Docker Desktop**: Se verificó que Docker no estaba corriendo; se inició exitosamente.
+- **Corrección de API Keys**:
+  - `workflows/principal-recepcion.json`: Se reemplazó API Key hardcodeada de Gemini por `$env.GEMINI_API_KEY`
+  - Se reemplazó API Key hardcodeada de Evolution API por `$env.AUTHENTICATION_API_KEY`
+- **Corrección de SQL Injection**: Se agregó nodo `Sanitizar Datos SQL` que escapa comillas simples antes de la inserción en MySQL
+- **Registro automático de clientes**: La query SQL ahora usa `INSERT IGNORE` para crear el cliente si no existe
+- **Limpieza**: Archivos temporales (`wf_*.json`, `n8n_cookies*.txt`, `pg_*.json`, etc.) movidos a `backups/`
+- **`.gitignore`**: Actualizado para excluir archivos temporales
+- **Problema detectado**: Ambas API Keys de Gemini (hardcodeada y del `.env`) tienen la cuota del plan gratuito agotada (error 429). Se necesita una nueva API Key desde https://aistudio.google.com/apikey
  
 ### 2026-05-12 13 - 14 hrs
 - **Configuración del asistente**: Se indicó que todas las respuestas deben ser en español de manera permanente.

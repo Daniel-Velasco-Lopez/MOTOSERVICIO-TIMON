@@ -137,7 +137,7 @@ Registra la queja, consulta el historial de citas del cliente para contexto, gen
 | Acción | Método | Endpoint |
 |---|---|---|
 | Recibir mensaje (webhook) | POST | `http://localhost:5678/webhook/whatsapp-webhook` |
-| Enviar mensaje | POST | `http://evolution:8080/message/sendText/motoservicio` |
+| Enviar mensaje | POST | `http://evolution:8080/message/sendText/timonws` |
 
 ## Variables de Entorno Requeridas
 

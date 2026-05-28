@@ -57,7 +57,7 @@
           300
         ],
         "parameters": {
-          "jsCode": "const prompt = $json.gemini_prompt;\n\nlet candidates = [];\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyAYENPhJrZUhLAEE-BjYzofiTkbIN3rc0I',\n    headers: {\n      'Content-Type': 'application/json'\n    },\n    body: {\n      contents: [{ parts: [{ text: prompt }] }],\n      generationConfig: { temperature: 0.1, maxOutputTokens: 50 }\n    }\n  });\n  candidates = response.candidates || [];\n} catch (error) {\n  candidates = [{ content: { parts: [{ text: 'INFORMACION (error: ' + error.message + ')' }] } }];\n}\n\nreturn [{\n  json: {\n    telefono: $json.telefono,\n    mensaje: $json.mensaje,\n    nombre: $json.nombre,\n    candidates: candidates\n  }\n}];"
+          "jsCode": "const prompt = $json.gemini_prompt;\n\nlet candidates = [];\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$env.GEMINI_API_KEY',\n    headers: {\n      'Content-Type': 'application/json'\n    },\n    body: {\n      contents: [{ parts: [{ text: prompt }] }],\n      generationConfig: { temperature: 0.1, maxOutputTokens: 300 }\n    }\n  });\n  candidates = response.candidates || [];\n} catch (error) {\n  candidates = [{ content: { parts: [{ text: 'INFORMACION (error: ' + error.message + ')' }] } }];\n}\n\nreturn [{\n  json: {\n    telefono: $json.telefono,\n    mensaje: $json.mensaje,\n    nombre: $json.nombre,\n    candidates: candidates\n  }\n}];"
         }
       },
       {
@@ -219,7 +219,7 @@
           300
         ],
         "parameters": {
-          "jsCode": "// Enviar respuesta a WhatsApp usando Evolution API\nconst telefono = $json.telefono;\nconst respuesta = $json.respuesta;\n\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'http://evolution:8080/message/sendText/timonws',\n    headers: {\n      'apikey': 'evotimon2026',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      number: telefono,\n      text: respuesta\n    }\n  });\n  return [{ json: { success: true, categoria: $json.categoria, respuesta: respuesta, evolutionResponse: response } }];\n} catch (error) {\n  return [{ json: { success: false, categoria: $json.categoria, respuesta: respuesta, error: error.message } }];\n}"
+          "jsCode": "// Enviar respuesta a WhatsApp usando Evolution API\nconst telefono = $json.telefono;\nconst respuesta = $json.respuesta;\n\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'http://evolution:8080/message/sendText/timonws',\n    headers: {\n      'apikey': '$env.AUTHENTICATION_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      number: telefono,\n      text: respuesta\n    }\n  });\n  return [{ json: { success: true, categoria: $json.categoria, respuesta: respuesta, evolutionResponse: response } }];\n} catch (error) {\n  return [{ json: { success: false, categoria: $json.categoria, respuesta: respuesta, error: error.message } }];\n}"
         }
       },
       {

@@ -1,0 +1,471 @@
+{
+  "name": "Recepción y Clasificación de Mensajes",
+  "nodes": [
+    {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "name": "Webhook Evolution",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "path": "whatsapp-webhook",
+        "options": {},
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "responseData": "allEntries",
+        "webhookId": "whatsapp-webhook"
+      },
+      "webhookId": "whatsapp-webhook"
+    },
+    {
+      "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Extraer Mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nlet telefono = '';\nlet mensaje = '';\nlet nombre = '';\nlet remoteJid = '';\n\nif (body.data) {\n  const key = body.data.key || {};\n  remoteJid = key.remoteJidAlt || key.remoteJid || '';\n  telefono = remoteJid.split('@')[0];\n\n  mensaje = body.data.message?.conversation ||\n            body.data.message?.extendedTextMessage?.text ||\n            '';\n\n  nombre = body.data.pushName || '';\n} else {\n  telefono = body.telefono || body.from || body.sender || '';\n  mensaje = body.mensaje || body.message || body.text || '';\n  nombre = body.nombre || body.pushName || '';\n  remoteJid = telefono ? telefono + '@s.whatsapp.net' : '';\n}\n\nreturn [\n  {\n    json: {\n      telefono: telefono.replace(/[^0-9]/g, ''),\n      mensaje: mensaje.trim(),\n      nombre: nombre,\n      remoteJid: remoteJid\n    }\n  }\n];"
+      }
+    },
+    {
+      "id": "6ba7b811-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Preparar Prompt Gemini",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const mensaje = $json.mensaje;\nconst prompt = 'Eres un clasificador de mensajes para un taller de motos.\\nClasifica el siguiente mensaje en UNA categoría:\\n- AGENDAMIENTO\\n- COTIZACION\\n- DIAGNOSTICO\\n- INFORMACION\\n- QUEJA\\n\\nResponde SOLO la categoría en mayúsculas.\\n\\nMensaje: ' + mensaje;\n\nreturn [{\n  json: {\n    telefono: $json.telefono,\n    mensaje: mensaje,\n    nombre: $json.nombre,\n    gemini_prompt: prompt\n  }\n}];"
+      }
+    },
+    {
+      "id": "6ba7b821-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Llamar Gemini",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const prompt = $json.gemini_prompt;\n\nlet candidates = [];\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$env.GEMINI_API_KEY',\n    headers: {\n      'Content-Type': 'application/json'\n    },\n    body: {\n      contents: [{ parts: [{ text: prompt }] }],\n      generationConfig: { temperature: 0.1, maxOutputTokens: 300 }\n    }\n  });\n  candidates = response.candidates || [];\n} catch (error) {\n  candidates = [{ content: { parts: [{ text: 'INFORMACION (error: ' + error.message + ')' }] } }];\n}\n\nreturn [{\n  json: {\n    telefono: $json.telefono,\n    mensaje: $json.mensaje,\n    nombre: $json.nombre,\n    candidates: candidates\n  }\n}];"
+      }
+    },
+    {
+      "id": "6ba7b823-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Procesar Categoría",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const originalData = $json;\nconst geminiText = $json.candidates?.[0]?.content?.parts?.[0]?.text || '';\nconst match = geminiText.toUpperCase().match(/AGENDAMIENTO|COTIZACION|DIAGNOSTICO|INFORMACION|QUEJA/);\nconst categoria = match ? match[0] : 'INFORMACION';\n\nreturn [{\n  json: {\n    telefono: originalData.telefono,\n    mensaje: originalData.mensaje,\n    nombre: originalData.nombre,\n    categoria: categoria\n  }\n}];"
+      }
+    },
+    {
+      "id": "6ba7b812-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Switch Categoría",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ],
+      "parameters": {
+        "mode": "rules",
+        "dataType": "string",
+        "value1": "={{ $json.categoria }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "AGENDAMIENTO",
+              "outputKey": "agendamiento"
+            },
+            {
+              "operation": "equal",
+              "value2": "COTIZACION",
+              "outputKey": "cotizacion"
+            },
+            {
+              "operation": "equal",
+              "value2": "DIAGNOSTICO",
+              "outputKey": "diagnostico"
+            },
+            {
+              "operation": "equal",
+              "value2": "INFORMACION",
+              "outputKey": "informacion"
+            },
+            {
+              "operation": "equal",
+              "value2": "QUEJA",
+              "outputKey": "queja"
+            }
+          ]
+        },
+        "fallbackOutput": 3
+      }
+    },
+    {
+      "id": "6ba7b813-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Agendamiento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        100
+      ],
+      "parameters": {
+        "jsCode": "const mensaje = $json.mensaje.toLowerCase();\nlet respuesta = '';\nif (mensaje.includes('cancel')) {\n  respuesta = 'Entendido. He cancelado tu cita. Si deseas agendar una nueva, solo dímelo.';\n} else if (mensaje.includes('reprogram') || mensaje.includes('cambiar')) {\n  respuesta = 'Claro, podemos reprogramar tu cita. ¿Qué día y hora te gustaría?';\n} else if (mensaje.includes('horario') || mensaje.includes('dispon')) {\n  respuesta = 'Nuestros horarios disponibles son: Lunes a Viernes de 9:00 a 18:00 y Sábados de 9:00 a 14:00. ¿Qué día prefieres?';\n} else {\n  respuesta = 'Con gusto te ayudo a agendar una cita. ¿Qué servicio necesitas y qué día te gustaría venir?';\n}\nreturn [{ json: { ...$json, respuesta } }];"
+      }
+    },
+    {
+      "id": "6ba7b814-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Cotización",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        220
+      ],
+      "parameters": {
+        "jsCode": "const mensaje = $json.mensaje.toLowerCase();\nlet respuesta = '';\nif (mensaje.includes('aceite')) {\n  respuesta = '🛵 *Cambio de Aceite*: $350 MXN (incluye aceite y filtro).';\n} else if (mensaje.includes('freno')) {\n  respuesta = '🛵 *Servicio de Frenos*: Balatas desde $250, rectificación de disco $400, purga de líquido $150.';\n} else if (mensaje.includes('llanta')) {\n  respuesta = '🛵 *Llantas*: Trasera desde $800, Delantera desde $700 (instalación incluida).';\n} else if (mensaje.includes('cadena') || mensaje.includes('transmisi')) {\n  respuesta = '🛵 *Cadena y Transmisión*: Ajuste $100, lubricación $150, cambio de kit $1,200.';\n} else if (mensaje.includes('bater')) {\n  respuesta = '🛵 *Batería*: Desde $600 (instalación incluida).';\n} else {\n  respuesta = '🛵 *Lista de Precios:*\\n- Cambio de Aceite: $350\\n- Frenos: desde $250\\n- Llantas: desde $700\\n- Cadena/Transmisión: desde $100\\n- Batería: desde $600\\n- Diagnóstico General: $200\\n\\n¿Sobre qué servicio deseas más detalles?';\n}\nreturn [{ json: { ...$json, respuesta } }];"
+      }
+    },
+    {
+      "id": "6ba7b815-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Diagnóstico",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        340
+      ],
+      "parameters": {
+        "jsCode": "const mensaje = $json.mensaje.toLowerCase();\nlet respuesta = '';\nif (mensaje.includes('ruido') || mensaje.includes('chilla') || mensaje.includes('traquetea')) {\n  respuesta = 'Entiendo que escuchas un ruido anormal. ¿Podrías describir si el ruido ocurre al acelerar, frenar, o en curvas?';\n} else if (mensaje.includes('no enciende') || mensaje.includes('no prende') || mensaje.includes('arranca')) {\n  respuesta = 'Lamento que no encienda. ¿Escuchas algún clic cuando intentas encender? ¿Las luces del tablero se encienden normalmente?';\n} else if (mensaje.includes('fuga') || mensaje.includes('pierde') || mensaje.includes('gotea')) {\n  respuesta = 'Una fuga puede ser peligrosa. Te recomendamos no usarla hasta revisarla. ¿De qué color es el líquido?';\n} else if (mensaje.includes('vibra') || mensaje.includes('tiembla') || mensaje.includes('sacude')) {\n  respuesta = 'Las vibraciones pueden tener varias causas. ¿Ocurren al acelerar, al frenar o al mantener velocidad constante?';\n} else {\n  respuesta = 'Gracias por reportar la falla. Para un mejor diagnóstico, ¿podrías contarme más detalles? ¿Cuándo comenzó el problema?';\n}\nreturn [{ json: { ...$json, respuesta } }];"
+      }
+    },
+    {
+      "id": "6ba7b816-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Información",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        460
+      ],
+      "parameters": {
+        "jsCode": "const mensaje = $json.mensaje.toLowerCase();\nlet respuesta = '';\nif (mensaje.includes('horario') || mensaje.includes('abren') || mensaje.includes('cierran')) {\n  respuesta = '📍 *Horarios:* Lunes a Viernes: 9:00 a 18:00, Sábados: 9:00 a 14:00, Domingos: Cerrado';\n} else if (mensaje.includes('ubicaci') || mensaje.includes('direcci') || mensaje.includes('dónde')) {\n  respuesta = '📍 *Dirección:* Calle Benito Juárez #123, Col. Centro, Huajuapan de León, Oax.';\n} else if (mensaje.includes('pago') || mensaje.includes('tarjeta') || mensaje.includes('efectivo')) {\n  respuesta = '💳 *Formas de Pago:* Efectivo, Tarjeta débito/crédito, Transferencia, Mercado Pago';\n} else if (mensaje.includes('tiempo') || mensaje.includes('demora') || mensaje.includes('tarda')) {\n  respuesta = '⏱️ *Tiempos:* Cambio Aceite 30min, Frenos 1-2h, Diagnóstico 30min-1h, Servicio completo 2-4h';\n} else {\n  respuesta = '👋 ¡Bienvenido a Moto Servicios Timón!\\n📍 Benito Juárez #123, Col. Centro\\n🕐 Lun-Vie 9:00-18:00, Sáb 9:00-14:00\\n\\n¿En qué puedo ayudarte?';\n}\nreturn [{ json: { ...$json, respuesta } }];"
+      }
+    },
+    {
+      "id": "6ba7b817-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Queja",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        580
+      ],
+      "parameters": {
+        "jsCode": "const nombre = $json.nombre || 'cliente';\nconst respuesta = 'Hola ' + nombre + ', lamentamos mucho tu experiencia. 😔\\n\\nHemos registrado tu queja y la revisaremos con nuestro equipo.\\n\\nUn asesor te contactará en máximo 24 horas hábiles.\\n\\nGracias por tu paciencia y confianza en Moto Servicios Timón.';\nreturn [{ json: { ...$json, respuesta } }];"
+      }
+    },
+    {
+      "id": "6ba7b822-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Sanitizar Datos SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        260
+      ],
+      "parameters": {
+        "jsCode": "function esc(str) {\n  return (str || '').replace(/'/g, \"''\").replace(/\\\\/g, '\\\\\\\\');\n}\n\nreturn [{\n  json: {\n    telefono: $json.telefono,\n    mensaje: $json.mensaje,\n    nombre: $json.nombre,\n    respuesta: $json.respuesta,\n    categoria: $json.categoria,\n    telefono_esc: esc($json.telefono),\n    mensaje_esc: esc($json.mensaje),\n    nombre_esc: esc($json.nombre || 'Cliente'),\n    respuesta_esc: esc($json.respuesta)\n  }\n}];"
+      }
+    },
+    {
+      "id": "6ba7b818-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Registrar Conversación",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        340
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT IGNORE INTO clientes (nombre, telefono) VALUES ('{{ $json.nombre_esc }}', '{{ $json.telefono_esc }}');\nINSERT INTO conversaciones (cliente_id, mensaje, respuesta) VALUES ((SELECT id FROM clientes WHERE telefono = '{{ $json.telefono_esc }}' LIMIT 1), '{{ $json.mensaje_esc }}', '{{ $json.respuesta_esc }}');",
+        "options": {}
+      },
+      "credentials": {
+        "mySql": {
+          "id": "eN5cnOwV",
+          "name": "MySQL motoservicio"
+        }
+      }
+    },
+    {
+      "id": "6ba7b819-9dad-11d1-80b4-00c04fd430c8",
+      "name": "Enviar Respuesta WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1450,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Enviar respuesta a WhatsApp usando Evolution API\nconst telefono = $json.telefono;\nconst respuesta = $json.respuesta;\n\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'http://evolution:8080/message/sendText/timonws',\n    headers: {\n      'apikey': '$env.AUTHENTICATION_API_KEY',\n      'Content-Type': 'application/json'\n    },\n    body: {\n      number: telefono,\n      text: respuesta\n    }\n  });\n  return [{ json: { success: true, categoria: $json.categoria, respuesta: respuesta, evolutionResponse: response } }];\n} catch (error) {\n  return [{ json: { success: false, categoria: $json.categoria, respuesta: respuesta, error: error.message } }];\n}"
+      }
+    },
+    {
+      "id": "6ba7b820-9dad-11d1-80b4-00c04fd430c9",
+      "name": "Responder Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1650,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, categoria: $json.categoria, respuesta: $json.respuesta }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Evolution": {
+      "main": [
+        [
+          {
+            "node": "Extraer Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Preparar Prompt Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Prompt Gemini": {
+      "main": [
+        [
+          {
+            "node": "Llamar Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar Gemini": {
+      "main": [
+        [
+          {
+            "node": "Procesar Categoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Categoría": {
+      "main": [
+        [
+          {
+            "node": "Switch Categoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Categoría": {
+      "main": [
+        [
+          {
+            "node": "Agendamiento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cotización",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Diagnóstico",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Información",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Queja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agendamiento": {
+      "main": [
+        [
+          {
+            "node": "Sanitizar Datos SQL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar Respuesta WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cotización": {
+      "main": [
+        [
+          {
+            "node": "Sanitizar Datos SQL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar Respuesta WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Diagnóstico": {
+      "main": [
+        [
+          {
+            "node": "Sanitizar Datos SQL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar Respuesta WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Información": {
+      "main": [
+        [
+          {
+            "node": "Sanitizar Datos SQL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar Respuesta WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queja": {
+      "main": [
+        [
+          {
+            "node": "Sanitizar Datos SQL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar Respuesta WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitizar Datos SQL": {
+      "main": [
+        [
+          {
+            "node": "Registrar Conversación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Conversación": {
+      "main": [
+        []
+      ]
+    },
+    "Enviar Respuesta WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "whatsapp",
+      "id": "tag-whatsapp"
+    },
+    {
+      "name": "motoservicio",
+      "id": "tag-motoservicio"
+    }
+  ],
+  "id": "x8kMEJ0RzI8",
+  "versionId": "9a6ea7e7-0943-4e94-9035-fcabbc0aa66c",
+  "pinData": {},
+  "createdAt": "2026-05-18T14:23:03.468Z",
+  "updatedAt": "2026-05-18T14:23:03.468Z"
+}
