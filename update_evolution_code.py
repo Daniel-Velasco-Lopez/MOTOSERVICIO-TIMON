@@ -3,8 +3,7 @@ import json
 with open(r'C:\Users\CICEM\Documents\Carrera ISIC\ISC 8º\SCC-1012 Inteligencia Artificial\motoservicio-timon\workflows\principal-recepcion.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
-js_code = r"""// Enviar respuesta a WhatsApp usando Evolution API
-const telefono = $json.telefono;
+js_code = r"""const telefono = $json.telefono;
 const respuesta = $json.respuesta;
 
 try {
@@ -12,7 +11,7 @@ try {
     method: 'POST',
     url: 'http://evolution:8080/message/sendText/timonws',
     headers: {
-      'apikey': 'evotimon2026',
+      'apikey': process.env.AUTHENTICATION_API_KEY,
       'Content-Type': 'application/json'
     },
     body: {
@@ -22,13 +21,7 @@ try {
   });
   return [{ json: { success: true, categoria: $json.categoria, respuesta: respuesta, evolutionResponse: response } }];
 } catch (error) {
-  const errorDetails = {
-    message: error.message,
-    statusCode: error.statusCode,
-  };
-  if (error.response && error.response.body) errorDetails.responseBody = error.response.body;
-  if (error.response && error.response.headers) errorDetails.responseHeaders = error.response.headers;
-  return [{ json: { success: false, categoria: $json.categoria, respuesta: respuesta, error: errorDetails } }];
+  return [{ json: { success: false, categoria: $json.categoria, respuesta: respuesta, error: error.message } }];
 }"""
 
 for n in data[0]['nodes']:
