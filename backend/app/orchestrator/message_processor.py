@@ -22,14 +22,38 @@ logger = logging.getLogger(__name__)
 class MessageProcessor:
     def __init__(self, memory_service: MemoryService = None, rag_pipeline: RAGPipeline = None):
         self.tool_executor = ToolExecutor(TOOL_REGISTRY)
-        self.objective_tracker = ObjectiveTracker()
-        self.state_machine = StateMachine("COTIZACION")
-        self.planner = Planner()
         self.generator = Generator()
         self.reflector = Reflector()
         self.prompt_builder = PromptOrchestrator()
         self.context_builder = ContextBuilder(memory_service, rag_pipeline)
         self.memory = memory_service
+        self._sessions: dict[str, dict] = {}
+
+    async def _get_session_state(self, session_id: str) -> dict:
+        if session_id not in self._sessions:
+            ot = ObjectiveTracker()
+            sm = StateMachine("COTIZACION")
+            planner = Planner()
+
+            if self.memory:
+                try:
+                    mem = await self.memory.load(session_id, session_id)
+                    raw_goals = mem.get("goals")
+                    raw_sm = mem.get("state_machine")
+                    if raw_goals:
+                        ot.load(raw_goals)
+                    if raw_sm:
+                        sm = StateMachine.from_dict(raw_sm)
+                except Exception:
+                    logger.warning(f"No se pudo restaurar estado de sesión {session_id}")
+
+            self._sessions[session_id] = {
+                "objective_tracker": ot,
+                "state_machine": sm,
+                "planner": planner,
+            }
+
+        return self._sessions[session_id]
 
     async def process(self, mensaje: str, session_id: str, telefono: str, nombre: str = None) -> dict:
         logger.info(f"Processing message from {telefono} (session: {session_id}): {mensaje[:100]}")
@@ -42,21 +66,26 @@ class MessageProcessor:
                 "processed": True,
             }
 
+        session_state = await self._get_session_state(session_id)
+        ot = session_state["objective_tracker"]
+        sm = session_state["state_machine"]
+        planner = session_state["planner"]
+
         context = await self.context_builder.build_context(
             mensaje=mensaje,
             session_id=session_id,
             telefono=telefono,
             nombre=nombre,
-            objective_tracker=self.objective_tracker,
-            state_machine=self.state_machine,
+            objective_tracker=ot,
+            state_machine=sm,
         )
 
         classification = context["classification"]
         intent = classification.get("intencion_principal", "OTRO")
 
-        plan = await self.planner.generate_plan(context)
-        self.planner.current_plan = plan
-        self.planner.current_step = 0
+        plan = await planner.generate_plan(context)
+        planner.current_plan = plan
+        planner.current_step = 0
 
         tool_results = {}
         executed_tools = set()
@@ -65,7 +94,7 @@ class MessageProcessor:
 
         while iteration < max_iterations:
             iteration += 1
-            action = self.planner.get_current_action()
+            action = planner.get_current_action()
 
             if not action:
                 break
@@ -74,7 +103,7 @@ class MessageProcessor:
 
             tool_name = action.get("tool")
             if tool_name in executed_tools:
-                self.planner.advance()
+                planner.advance()
                 continue
 
             params = action.get("params", {})
@@ -88,24 +117,24 @@ class MessageProcessor:
             context["tool_results"] = tool_results
 
             if result.get("success"):
-                goal_id = self._find_goal_for_tool(tool_name)
+                goal_id = self._find_goal_for_tool(tool_name, ot)
                 if goal_id:
-                    self.objective_tracker.on_tool_success(goal_id, result)
+                    ot.on_tool_success(goal_id, result)
             else:
-                goal_id = self._find_goal_for_tool(tool_name)
+                goal_id = self._find_goal_for_tool(tool_name, ot)
                 if goal_id:
-                    self.objective_tracker.on_tool_failure(goal_id, result.get("error", "unknown"))
+                    ot.on_tool_failure(goal_id, result.get("error", "unknown"))
 
-            next_plan = await self.planner.generate_plan(context)
+            next_plan = await planner.generate_plan(context)
             if next_plan != plan:
                 plan = next_plan
-                self.planner.current_plan = plan
-                self.planner.current_step = 0
+                planner.current_plan = plan
+                planner.current_step = 0
             else:
-                self.planner.advance()
+                planner.advance()
 
         context["tool_results"] = tool_results
-        context["goals_context"] = self.objective_tracker.to_prompt_context()
+        context["goals_context"] = ot.to_prompt_context()
 
         response = await self.generator.generate_response(context)
 
@@ -116,8 +145,8 @@ class MessageProcessor:
             if improved and len(improved) > 10:
                 response = improved
 
-        state_report = self.state_machine.to_dict() if self.state_machine else {}
-        goals_summary = self.objective_tracker.get_summary() if self.objective_tracker else {}
+        state_report = sm.to_dict() if sm else {}
+        goals_summary = ot.get_summary() if ot else {}
 
         if self.memory:
             try:
@@ -128,7 +157,7 @@ class MessageProcessor:
                     respuesta=response,
                     classification=classification,
                     tool_results=tool_results,
-                    goals=self.objective_tracker.save_to_session(),
+                    goals=ot.save_to_session(),
                     state_machine=state_report,
                 ))
             except Exception as e:
@@ -145,7 +174,7 @@ class MessageProcessor:
             "validation": validation,
         }
 
-    def _find_goal_for_tool(self, tool_name: str) -> Optional[str]:
+    def _find_goal_for_tool(self, tool_name: str, objective_tracker: ObjectiveTracker) -> Optional[str]:
         mapping = {
             "registrar_cliente": "REGISTRAR_CLIENTE",
             "cotizar_servicio": "COTIZAR_SERVICIO",
@@ -156,7 +185,7 @@ class MessageProcessor:
         }
         goal_type = mapping.get(tool_name)
         if goal_type:
-            for g in self.objective_tracker.goals:
+            for g in objective_tracker.goals:
                 if g["goal_type"] == goal_type and g["status"] in ("ACTIVE", "CREATED"):
                     return g["goal_id"]
         return None

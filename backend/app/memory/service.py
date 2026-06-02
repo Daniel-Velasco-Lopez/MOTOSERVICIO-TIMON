@@ -25,10 +25,20 @@ class MemoryService:
         if isinstance(profile, str):
             profile = json.loads(profile)
 
+        goals = session.get("goals")
+        if isinstance(goals, str):
+            goals = json.loads(goals)
+
+        state_machine = session.get("state_machine")
+        if isinstance(state_machine, str):
+            state_machine = json.loads(state_machine)
+
         return {
             "history": history,
             "episodic": episodic,
             "profile": profile,
+            "goals": goals,
+            "state_machine": state_machine,
         }
 
     async def save(
