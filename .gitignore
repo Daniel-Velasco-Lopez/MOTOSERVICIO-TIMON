@@ -15,3 +15,14 @@ pg_*.json
 login_body.json
 qr_*.png
 update_active_version*.sql
+
+# Backend Python
+backend/__pycache__/
+backend/*.pyc
+backend/.venv/
+backend/venv/
+backend/.env
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
