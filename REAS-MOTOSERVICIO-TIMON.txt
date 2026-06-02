@@ -1,0 +1,224 @@
+TECNOLÓGICO NACIONAL DE MÉXICO
+INSTITUTO TECNOLÓGICO DE TLAXIACO
+
+INGENIERÍA EN SISTEMAS COMPUTACIONALES
+DESARROLLO DE SOFTWARE ISIE-DES-2022-01
+
+SCC1012 - INTELIGENCIA ARTIFICIAL
+CÁTEDRA DEL ING. ACEVEDO BAUTISTA IVOR
+
+
+ALUMNOS:
+NOMBRE	NÚM. DE CONTROL
+Velasco López Daniel	22620076
+
+GRUPO: 
+8BS
+
+REAS – MOTOSERVICIO TIMÓN
+UNIDAD 1: INTRODUCCIÓN A LA INTELIGENCIA ARTIFICIAL. 
+
+Tlaxiaco, Oaxaca a 26 de marzo de 2026 
+REAS – AGENTE PARA EL MOTOSERVICIO TIMÓN
+El sistema propuesto consiste en el desarrollo de un agente inteligente orientado a la atención automatizada de clientes para el negocio “Moto servicios TIMÓN”. Este agente será implementado utilizando la plataforma n8n, desplegada dentro de un entorno de contenedores mediante Docker, y tendrá como principal canal de comunicación la aplicación WhatsApp.
+La finalidad de este agente es optimizar la interacción con los clientes, permitiendo responder dudas frecuentes, gestionar citas de manera automática y dar seguimiento a los servicios realizados, todo esto sin requerir intervención humana constante. De esta manera, el sistema no solo mejora la eficiencia operativa del taller, sino que también contribuye directamente al crecimiento del negocio.
+En cuanto a la medición del rendimiento, el agente será evaluado considerando diversos factores que permiten determinar su efectividad. Uno de los principales indicadores será el tiempo de respuesta, ya que un sistema automatizado debe ser capaz de atender solicitudes de manera inmediata. Asimismo, se analizará la cantidad de solicitudes que son resueltas completamente por el agente sin necesidad de intervención humana, lo cual refleja su nivel de autonomía. Otro aspecto importante será el número de citas generadas a través del sistema, así como la satisfacción del cliente, que puede medirse mediante retroalimentación posterior a la atención. Estos elementos en conjunto permiten tener una visión clara del impacto del agente dentro del negocio.
+Respecto al incremento del negocio, el agente juega un papel clave, ya que al ofrecer atención continua las 24 horas del día, se incrementan las oportunidades de captar nuevos clientes. Además, al automatizar procesos como el agendamiento de citas, se reduce la pérdida de clientes por falta de respuesta o demoras. También se fortalece la relación con los clientes actuales mediante seguimientos automáticos, lo cual fomenta la fidelización. En conjunto, estas mejoras impactan directamente en el aumento de ingresos y en la profesionalización del servicio ofrecido por el taller.
+El entorno en el que opera el agente está conformado por varios elementos tecnológicos interconectados. En primer lugar, se encuentra WhatsApp como medio principal de comunicación con los clientes. Este canal se conecta mediante una API hacia un servidor local que ejecuta Docker, dentro del cual se encuentra corriendo n8n como herramienta de automatización. A su vez, el sistema puede integrarse con una base de datos que almacena información relevante como clientes, servicios y citas. Finalmente, se incorpora un modelo de inteligencia artificial que permite interpretar los mensajes recibidos y generar respuestas adecuadas.
+En términos de interacción, el agente está diseñado para comunicarse principalmente con los clientes, quienes pueden realizar consultas sobre precios, disponibilidad de servicios o solicitar citas. Sin embargo, también interactúa indirectamente con el personal del taller, ya que puede notificar nuevas citas o requerir intervención en casos más complejos. Incluso, en una versión más avanzada, podría interactuar con proveedores al generar solicitudes automáticas de refacciones cuando se detecte bajo inventario.
+Dentro del modelo REAS, los actuadores representan las acciones que el agente puede ejecutar. En este caso, la acción principal consiste en el envío de mensajes a través de WhatsApp. El agente puede responder preguntas, confirmar citas, enviar recordatorios y proporcionar información relevante al cliente. Por ejemplo, si un usuario solicita una cita, el sistema no solo responde, sino que también verifica la disponibilidad, agenda el servicio y envía una confirmación. Todas estas acciones son ejecutadas automáticamente a través de los flujos definidos en n8n.
+Por otro lado, los sensores permiten al agente percibir su entorno, es decir, recibir información. En este sistema, los sensores están representados por los mensajes que llegan desde WhatsApp, los cuales son capturados mediante un webhook en n8n. Una vez recibido el mensaje, el sistema utiliza inteligencia artificial para interpretar su contenido y clasificar la solicitud en diferentes categorías, como cotización, agendamiento, consulta general o diagnóstico de fallas. Esta clasificación es fundamental, ya que determina la acción que el agente debe ejecutar posteriormente.
+El proceso completo del sistema sigue una lógica clara: el cliente envía un mensaje, el sistema lo recibe, lo analiza mediante inteligencia artificial, toma una decisión basada en reglas y datos disponibles, y finalmente ejecuta una acción. Este ciclo continuo permite que el agente funcione de manera autónoma, adaptándose a diferentes tipos de solicitudes.
+Además, el sistema contempla el almacenamiento de información relevante, como el historial de conversaciones, datos de clientes y registros de servicios realizados. Esto no solo permite dar un mejor seguimiento, sino que también abre la posibilidad de implementar mejoras futuras, como recomendaciones personalizadas o análisis del comportamiento de los clientes.
+Finalmente, es importante mencionar que el sistema está diseñado para ser escalable, lo que significa que puede crecer conforme aumenten las necesidades del negocio. Por ejemplo, se podrían integrar nuevos canales de comunicación, mejorar los modelos de inteligencia artificial o ampliar las funcionalidades del agente. 
+1.	Descripción General del Agente
+El agente inteligente desarrollado para “Moto servicios TIMÓN” es un asistente automatizado implementado en n8n y desplegado mediante contenedores en Docker, integrado con WhatsApp para interactuar con clientes en tiempo real.
+Su propósito es:
+•	Automatizar la atención al cliente
+•	Optimizar la gestión de citas
+•	Incrementar la eficiencia operativa del negocio
+•	Mejorar la experiencia del usuario
+2.	Objetivos del sistema
+2.1.	Medición de rendimiento
+El rendimiento del agente se evaluará mediante:
+•	Tiempo de respuesta promedio.
+•	Número de solicitudes atendidas automáticamente.
+•	Tasa de resolución sin intervención humana. 
+•	Número de citas agendadas.
+•	Nivel de satisfacción del cliente.
+2.2.	Incremento del negocio.
+El agente contribuye al crecimiento mediante:
+•	Mayor captación de clientes (atención 24/7).
+•	Incremento en la retención de clientes.
+•	Optimización del uso del tiempo del taller.
+•	Aumento en ventas por recomendaciones automáticas.
+•	Mejora en la imagen profesional del negocio
+3.	Entorno del Sistema
+3.1.	Entorno conectado
+El agente opera dentro de un ecosistema digital compuesto por:
+•	WhatsApp (canal principal de comunicación).
+•	Servidor local en Docker.
+•	Plataforma de automatización n8n.
+•	API de inteligencia artificial (procesamiento de lenguaje natural).
+•	Base de datos (clientes, servicios, citas)
+3.2.	Definición de interacción
+3.2.1.	Con clientes
+•	Consulta de precios.
+•	Solicitud de servicios.
+•	Agendamiento de citas.
+•	Seguimiento post-servicio.
+3.2.2.	Con personal del taller
+•	Notificación de nuevas citas.
+•	Actualización de estado de servicios.
+•	Escalamiento de casos complejos.
+3.2.3.	Con proveedores
+•	(Opcional) Solicitudes automáticas de refacciones.
+•	Alertas de inventario bajo.
+4.	Actuadores (Acciones del sistema)
+Los actuadores representan las acciones que el agente puede ejecutar:
+4.1.	Envío de mensajes
+El agente puede:
+•	Responder automáticamente en WhatsApp.
+•	Enviar confirmaciones de citas.
+•	Enviar recordatorios.
+•	Enviar cotizaciones.
+•	Dar seguimiento post-servicio.
+Ejemplo:
+Cliente: “Quiero una cita”
+Agente:
+•	Consulta disponibilidad.
+•	Agenda cita.
+•	Envía confirmación.
+5.	Sensores (Entrada del sistema)
+Los sensores permiten al agente percibir el entorno.
+5.1.	Recepción de peticiones
+Se reciben mediante:
+•	API de WhatsApp (Webhook en n8n).
+•	Formularios (opcional).
+5.2.	Clasificación de peticiones
+El agente utiliza IA para clasificar solicitudes en categorías:
+•	Cotización.
+•	Agendamiento.
+•	Información general.
+•	Problemas mecánicos.
+•	Quejas o seguimiento.
+Ejemplo:
+Mensaje: “Mi moto hace ruido al arrancar” 
+Clasificación: Diagnóstico
+6.	Lógica de Decisión del Agente
+El agente opera bajo un modelo híbrido:
+•	Reglas predefinidas (flujos en n8n).
+•	Procesamiento de lenguaje natural (IA).
+•	Acceso a base de conocimiento del taller.
+7.	Flujo General del Sistema
+•	Cliente envía mensaje por WhatsApp.
+•	Webhook recibe mensaje en n8n.
+•	IA interpreta intención.
+•	Se consulta base de datos.
+•	Se genera respuesta.
+•	Se ejecuta acción (mensaje, cita, etc.).
+8.	Almacenamiento de Información
+El sistema almacena:
+•	Datos del cliente.
+•	Historial de conversaciones.
+•	Historial de servicios.
+•	Citas agendadas.
+9.	Seguridad y Control
+•	Autenticación en el servidor Docker.
+•	Control de acceso a n8n.
+•	Protección de datos del cliente.
+•	Logs de actividad.
+10.	Escalabilidad
+El sistema puede crecer mediante:
+•	Integración con más canales (Facebook, Web).
+•	Implementación de múltiples agentes.
+•	Uso de bases de datos más robustas.
+•	Automatización de inventario.
+11.	Valor agregado del sistema
+Este agente no solo automatiza tareas, sino que:
+•	Reduce carga de trabajo humano.
+•	Mejora tiempos de atención.
+•	Aumenta la satisfacción del cliente.
+•	Profesionaliza el negocio. 
+Agente Inteligente “Moto servicios TIMÓN”
+│
+├── Entorno del Sistema
+│   ├── Canales de comunicación
+│   │   └── WhatsApp
+│   │
+│   ├── Infraestructura
+│   │   ├── Docker
+│   │   └── n8n
+│   │
+│   ├── Servicios externos
+│   │   ├── API de IA
+│   │   └── Base de datos
+│   │
+│   └── Actores
+│       ├── Clientes
+│       ├── Personal del taller
+│       └── Proveedores
+│
+├── Sensores (Entradas)
+│   ├── Recepción de mensajes
+│   │   ├── WhatsApp API (Webhook)
+│   │   └── Formularios (opcional)
+│   │
+│   └── Clasificación de solicitudes
+│       ├── Cotización
+│       ├── Agendamiento
+│       ├── Información general
+│       ├── Diagnóstico mecánico
+│       └── Quejas / Seguimiento
+│
+├── Lógica del Agente
+│   ├── Reglas predefinidas
+│   │   └── Flujos en n8n
+│   │
+│   ├── Inteligencia Artificial
+│   │   └── Procesamiento de lenguaje natural
+│   │
+│   └── Base de conocimiento
+│       ├── Servicios
+│       ├── Precios
+│       └── Historial
+│
+├── Actuadores (Salidas)
+│   ├── Envío de mensajes
+│   │   ├── Respuestas automáticas
+│   │   ├── Confirmación de citas
+│   │   ├── Recordatorios
+│   │   ├── Cotizaciones
+│   │   └── Seguimiento
+│   │
+│   └── Acciones internas
+│       ├── Agendar citas
+│       ├── Consultar base de datos
+│       └── Notificar al personal
+│
+├── Procesos (Funcionamiento)
+│   ├── Recepción del mensaje
+│   ├── Interpretación (IA)
+│   ├── Toma de decisión
+│   ├── Generación de respuesta
+│   └── Ejecución de acción
+│
+├── Medición de rendimiento
+│   ├── Tiempo de respuesta
+│   ├── Solicitudes atendidas
+│   ├── Resolución automática
+│   ├── Citas generadas
+│   └── Satisfacción del cliente
+│
+├── Incremento del negocio
+│   ├── Captación de clientes (24/7)
+│   ├── Retención de clientes
+│   ├── Optimización del tiempo
+│   ├── Aumento de ventas
+│   └── Mejora de imagen
+│
+└── Almacenamiento de información
+    ├── Datos del cliente
+    ├── Conversaciones
+    ├── Historial de servicios
+    └── Citas
