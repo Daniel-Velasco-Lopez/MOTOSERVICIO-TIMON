@@ -1,10 +1,8 @@
-import json
 import asyncio
 import logging
 from typing import Optional
 
 from app.orchestrator.context_builder import ContextBuilder
-from app.agent.classifier import classify_message
 from app.agent.objective_tracker import ObjectiveTracker
 from app.agent.state_machine import StateMachine
 from app.agent.planner import Planner

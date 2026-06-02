@@ -41,7 +41,6 @@ async def classify_message(mensaje: str, history: list[dict] = None, fallback_ke
                 full_prompt += f"\n\nHistorial reciente: {str(history[-3:])}"
             raw = await gemini_service.generate(full_prompt, response_mime_type="application/json")
             if raw:
-                import json
                 gemini_result = json.loads(raw)
         except Exception as e:
             logger.warning(f"Gemini classification failed: {e}")

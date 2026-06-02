@@ -50,8 +50,7 @@ class Reflector:
                 )
                 raw = await gemini_service.generate(f"{prompt}\n\nRespuesta a evaluar: {response_text}", response_mime_type="application/json")
                 if raw:
-                    import json as json2
-                    gemini_result = json2.loads(raw)
+                    gemini_result = json.loads(raw)
             except Exception as e:
                 logger.warning(f"Gemini reflection failed: {e}")
 
