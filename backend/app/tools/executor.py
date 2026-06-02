@@ -186,7 +186,7 @@ class ToolExecutor:
         if "precios" in data:
             precios = data["precios"]
             if precios:
-                return " | ".join(f"{p['servicio']}: ${p['precio']}" for p in precios[:3])
+                return " | ".join(f"{p['servicio']}: ${p.get('precio_min', 0)}-${p.get('precio_max', 0)}" for p in precios[:3])
         if "horarios" in data:
             horarios = data["horarios"]
             return f"{len(horarios)} horarios disponibles"

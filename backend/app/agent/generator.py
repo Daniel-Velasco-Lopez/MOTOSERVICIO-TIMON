@@ -91,7 +91,7 @@ class Generator:
         if intent == "COTIZACION":
             precios = data.get("precios", [])
             if precios:
-                lines = [f"💰 *{p['servicio']}*: ${float(p['precio']):.2f}" for p in precios]
+                lines = [f"💰 *{p['servicio']}*: ${float(p.get('precio_min', 0)):.2f} - ${float(p.get('precio_max', 0)):.2f}" for p in precios]
                 lines.append("\n¿Te gustaría agendar una cita para este servicio?")
                 return "\n".join(lines)
             sugerencias = data.get("sugerencias", [])

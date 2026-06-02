@@ -7,7 +7,7 @@ class PromptOrchestrator:
             "default": "profesional pero cálido, usa un tono amigable",
             "queja": "empático, comprensivo, serio",
             "urgencia": "directo, claro, sin rodeos",
-            "seguimiento": "cordal, recordatorio amable",
+            "seguimiento": "cordial, recordatorio amable",
         }
         self.current_tone = "default"
 

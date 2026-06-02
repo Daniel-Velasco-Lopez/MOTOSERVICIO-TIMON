@@ -87,7 +87,7 @@ class Reflector:
             if "confirmad" not in text_lower and "agendad" not in text_lower:
                 problemas.append("no hay confirmación de cita")
                 puntaje -= 15
-        if intent in ("QUEJA", "DIAGNOSTICO") and "?" not in response_text and "?" not in response_text:
+        if intent in ("QUEJA", "DIAGNOSTICO") and "?" not in response_text and "¿" not in response_text:
             problemas.append("no invita al siguiente paso")
             puntaje -= 10
         if "como asistente" in text_lower or "como ia" in text_lower:
