@@ -22,9 +22,9 @@ logger = logging.getLogger(__name__)
 class MessageProcessor:
     def __init__(self, memory_service: MemoryService = None, rag_pipeline: RAGPipeline = None):
         self.tool_executor = ToolExecutor(TOOL_REGISTRY)
+        self.prompt_builder = PromptOrchestrator()
         self.generator = Generator(prompt_builder=self.prompt_builder)
         self.reflector = Reflector()
-        self.prompt_builder = PromptOrchestrator()
         self.context_builder = ContextBuilder(memory_service, rag_pipeline)
         self.memory = memory_service
         self._sessions: dict[str, dict] = {}

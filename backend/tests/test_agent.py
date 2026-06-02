@@ -6,6 +6,7 @@ from app.agent.state_machine import StateMachine
 from app.agent.planner import Planner
 from app.agent.generator import Generator
 from app.agent.reflector import Reflector
+from app.agent.prompt_orchestrator import PromptOrchestrator
 from app.orchestrator.message_processor import MessageProcessor
 from app.tools.executor import ToolExecutor, TOOL_REGISTRY, ToolRegistryBuilder
 from app.rag.chunker import Chunker
@@ -725,3 +726,25 @@ class TestPlannerFlows:
         ot.on_tool_success(g2["goal_id"], {"success": True, "data": {"precios": [{"servicio": "Frenos", "precio_min": "350"}]}})
 
         assert all(g["status"] == "COMPLETED" for g in ot.goals)
+
+
+# ============================================================
+# MESSAGE PROCESSOR INITIALIZATION TESTS
+# ============================================================
+
+class TestMessageProcessorInit:
+    def test_instantiation_no_exception(self):
+        mp = MessageProcessor()
+        assert mp is not None
+
+    def test_generator_has_prompt_builder(self):
+        mp = MessageProcessor()
+        assert mp.generator.prompt_builder is not None
+
+    def test_prompt_builder_is_prompt_orchestrator(self):
+        mp = MessageProcessor()
+        assert isinstance(mp.generator.prompt_builder, PromptOrchestrator)
+
+    def test_prompt_builder_is_shared_instance(self):
+        mp = MessageProcessor()
+        assert mp.prompt_builder is mp.generator.prompt_builder
