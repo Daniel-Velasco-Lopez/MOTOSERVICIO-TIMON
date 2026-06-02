@@ -3,6 +3,7 @@ import logging
 from typing import Optional
 
 from app.services.gemini import gemini_service
+from app.agent.prompt_orchestrator import PromptOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +32,8 @@ Responde SOLO con el texto del mensaje, sin metadatos adicionales."""
 
 
 class Generator:
-    def __init__(self):
-        pass
+    def __init__(self, prompt_builder: Optional[PromptOrchestrator] = None):
+        self.prompt_builder = prompt_builder
 
     async def generate_response(self, context: dict) -> str:
         classification = context.get("classification", {})
@@ -44,12 +45,15 @@ class Generator:
         gemini_response = None
         if gemini_service:
             try:
-                prompt = RESPONSE_PROMPT.format(
-                    intencion=intent,
-                    goals_context=goals_context or "ninguno",
-                    tool_results=json.dumps(tool_results, ensure_ascii=False, indent=2) if tool_results else "ninguno",
-                    mensaje=mensaje,
-                )
+                if self.prompt_builder:
+                    prompt = self.prompt_builder.build_system_prompt(context)
+                else:
+                    prompt = RESPONSE_PROMPT.format(
+                        intencion=intent,
+                        goals_context=goals_context or "ninguno",
+                        tool_results=json.dumps(tool_results, ensure_ascii=False, indent=2) if tool_results else "ninguno",
+                        mensaje=mensaje,
+                    )
                 gemini_response = await gemini_service.generate(mensaje, system_instruction=prompt)
             except Exception as e:
                 logger.warning(f"Gemini generation failed: {e}")
