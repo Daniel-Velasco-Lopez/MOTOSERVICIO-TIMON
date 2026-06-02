@@ -142,6 +142,7 @@ class Queja(Base):
     cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id", ondelete="RESTRICT"), nullable=False)
     cita_id: Mapped[Optional[int]] = mapped_column(ForeignKey("citas.id", ondelete="SET NULL"))
     descripcion: Mapped[str] = mapped_column(Text, nullable=False)
+    ticket: Mapped[Optional[str]] = mapped_column(String(20))
     urgencia: Mapped[str] = mapped_column(Enum("baja", "media", "alta"), default="media", index=True)
     estado: Mapped[str] = mapped_column(Enum("pendiente", "en_proceso", "resuelta", "cerrada"), default="pendiente", index=True)
     solucion: Mapped[Optional[str]] = mapped_column(Text)
@@ -170,6 +171,21 @@ class PerfilUsuario(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
 
     cliente = relationship("Cliente", back_populates="perfil")
+
+
+class DiagnosticoFalla(Base):
+    __tablename__ = "diagnosticos_fallas"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sintomas: Mapped[str] = mapped_column(Text, nullable=False)
+    causa: Mapped[str] = mapped_column(Text, nullable=False)
+    solucion: Mapped[str] = mapped_column(Text, nullable=False)
+    sistema: Mapped[Optional[str]] = mapped_column(String(100))
+    urgencia: Mapped[str] = mapped_column(String(20), default="media")
+    keywords: Mapped[Optional[dict]] = mapped_column(JSON)
+    activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
 
 
 class Recordatorio(Base):

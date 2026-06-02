@@ -18,7 +18,7 @@ class TestDatabaseModels:
         ]
         for table in expected:
             assert table in tables, f"Falta tabla: {table}"
-        assert len(tables) == 10
+        assert len(tables) == 11
 
     def test_tables_have_columns(self):
         tables = Base.metadata.tables
