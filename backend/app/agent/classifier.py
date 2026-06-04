@@ -101,19 +101,23 @@ def _rule_based_fallback(mensaje: str) -> dict:
         if kw in msg_lower:
             return {"intencion_principal": "INFORMACION", "confianza": 0.8, "entidades": {}}
 
-    return {"intencion_principal": "OTRO", "confianza": 0.3, "entidades": {}}
+    return {"intencion_principal": "OTRO", "confianza": 0.3, "entidades": _extract_entities(msg_lower)}
 
 
 def _extract_entities(text: str) -> dict:
     entities = {}
-    motos = {"itálika", "vento", "honda", "yamaha", "suzuki", "bajaj", "hero", "akt"}
+    import unicodedata
+    def strip_accents(s):
+        return ''.join(c for c in unicodedata.normalize('NFKD', s) if not unicodedata.combining(c))
+    text_plain = strip_accents(text)
+    motos = {"italika", "vento", "honda", "yamaha", "suzuki", "bajaj", "hero", "akt"}
     for m in motos:
-        if m in text:
+        if m in text_plain:
             entities["moto"] = m.capitalize()
             break
-    servicios = {"servicio", "mantenimiento", "afinación", "frenos", "llantas", "aceite", "cadena", "suspensión"}
+    servicios = ["afinacion", "mantenimiento", "frenos", "llantas", "aceite", "cadena", "suspension", "servicio"]
     for s in servicios:
-        if s in text:
+        if s in text_plain:
             entities["servicio_solicitado"] = s.capitalize()
             break
     import re

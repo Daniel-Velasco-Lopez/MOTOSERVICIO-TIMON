@@ -46,6 +46,29 @@ class ContextBuilder:
                     if state_machine and state_machine.domain != "COTIZACION":
                         state_machine.switch_domain("COTIZACION")
 
+            entities = classification.get("entidades", {})
+            for goal in objective_tracker.goals:
+                if goal.get("status") in ("ACTIVE", "CREATED", "WAITING_USER", "FAILED"):
+                    update = {}
+                    if goal["goal_type"] == "AGENDAR_CITA":
+                        inp = goal.get("input", {})
+                        if not inp.get("servicio") and entities.get("servicio_solicitado"):
+                            update["servicio"] = entities["servicio_solicitado"]
+                        if not inp.get("hora") and entities.get("hora_mencionada"):
+                            update["hora"] = entities["hora_mencionada"]
+                        if not inp.get("fecha") and entities.get("fecha_mencionada"):
+                            update["fecha"] = entities["fecha_mencionada"]
+                    elif goal["goal_type"] == "CONSULTAR_DISPONIBILIDAD":
+                        inp = goal.get("input", {})
+                        if not inp.get("fecha") and entities.get("fecha_mencionada"):
+                            update["fecha"] = entities["fecha_mencionada"]
+                    elif goal["goal_type"] == "REGISTRAR_CLIENTE":
+                        inp = goal.get("input", {})
+                        if not inp.get("nombre") and entities.get("nombre_cliente"):
+                            update["nombre"] = entities["nombre_cliente"]
+                    if update:
+                        objective_tracker.on_user_response(goal["goal_id"], update)
+
         goals = objective_tracker.goals if objective_tracker else []
         active_goals = [g for g in goals if g.get("status") in ("ACTIVE", "CREATED")]
 

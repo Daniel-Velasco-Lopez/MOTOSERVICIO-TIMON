@@ -66,7 +66,8 @@ class Planner:
                 step += 1
 
             elif goal_type == "AGENDAR_CITA":
-                plan.append({"step": step, "action": "tool_call", "tool": "agendar_cita", "params": {"telefono": inp.get("telefono", context.get("telefono", "")), "servicio": inp.get("servicio", ""), "fecha": inp.get("fecha", ""), "hora": inp.get("hora", "")}})
+                consulta_result = next((g.get("result", {}).get("data", {}).get("fecha", "") for g in context.get("goals", []) if g["goal_type"] == "CONSULTAR_DISPONIBILIDAD" and g.get("result")), "")
+                plan.append({"step": step, "action": "tool_call", "tool": "agendar_cita", "params": {"telefono": inp.get("telefono", context.get("telefono", "")), "servicio": inp.get("servicio") or context.get("classification", {}).get("entidades", {}).get("servicio_solicitado", ""), "fecha": inp.get("fecha") or context.get("classification", {}).get("entidades", {}).get("fecha_mencionada", "") or context.get("tool_results", {}).get("consultar_disponibilidad", {}).get("data", {}).get("fecha", "") or consulta_result, "hora": inp.get("hora") or context.get("classification", {}).get("entidades", {}).get("hora_mencionada", "")}})
                 step += 1
 
             elif goal_type == "RESOLVER_QUEJA":

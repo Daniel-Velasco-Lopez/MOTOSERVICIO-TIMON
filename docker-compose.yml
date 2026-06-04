@@ -120,6 +120,7 @@ services:
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: gemini-2.5-flash-lite
       CELERY_BROKER_URL: amqp://guest:guest@rabbitmq:5672//
       LOG_LEVEL: INFO
     depends_on:
