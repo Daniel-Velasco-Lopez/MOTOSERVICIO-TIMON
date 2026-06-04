@@ -72,8 +72,12 @@ def _rule_based_fallback(mensaje: str) -> dict:
     cotizacion_kw = {"cuánto cuesta", "precio", "cotización", "cuanto vale", "costo", "cuánto sale", "$"}
     agendamiento_kw = {"agendar", "cita", "apartar", "reserva", "horario", "puedo ir", "quiero llevar"}
     diagnostico_kw = {"falla", "problema", "ruido", "no enciende", "no prende", "descompuso", "daño", "fuga", "tronar"}
-    queja_kw = {"queja", "mal servicio", "inconforme", "no me gustó", "pésimo", "deficiente"}
+    queja_kw = {"queja", "mal servicio", "inconforme", "no me gustó", "pésimo", "deficiente", "no sirvió", "no sirvio", "no funcionó", "no funciono", "no sirve"}
     informacion_kw = {"horario", "ubicación", "dirección", "dónde están", "teléfono", "abren", "cuándo abren"}
+    service_inquiry = (("qué" in msg_lower or "cuáles" in msg_lower or "cuales" in msg_lower or "cual" in msg_lower or "que" in msg_lower) and
+                        ("servicio" in msg_lower or "servicios" in msg_lower or "ofrec" in msg_lower or "hacen" in msg_lower or "tienen" in msg_lower or "tipos" in msg_lower))
+    if service_inquiry:
+        return {"intencion_principal": "INFORMACION", "confianza": 0.9, "entidades": {"tipo_consulta": "servicios"}}
 
     for kw in saludos:
         if msg_lower.startswith(kw) or msg_lower == kw:

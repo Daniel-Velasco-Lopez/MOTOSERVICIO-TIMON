@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     qdrant_vector_size: int = 768
 
     gemini_api_key: Optional[str] = None
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_embedding_model: str = "text-embedding-004"
+    gemini_model: str = "gemini-2.5-flash-lite"
+    gemini_embedding_model: str = "gemini-embedding-002"
 
     rabbitmq_host: str = "rabbitmq"
     rabbitmq_port: int = 5672

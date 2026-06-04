@@ -1,0 +1,162 @@
+{
+  "name": "Gateway V2 \u00e2\u20ac\u201d n8n como Gateway Ligero",
+  "nodes": [
+    {
+      "id": "d10aa62b-9eea-41ec-bf44-2559bed7b36e",
+      "name": "Webhook Evolution",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "path": "whatsapp-webhook",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "responseData": "allEntries",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "webhookId": "whatsapp-webhook"
+    },
+    {
+      "id": "3a60a9b6-a398-41f6-8d12-acb8abb2bd5c",
+      "name": "Extraer y Sanitizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nlet telefono = '';\nlet mensaje = '';\nlet nombre = '';\nlet remoteJid = '';\n\nif (body.data) {\n  // Ignorar mensajes enviados por el propio bot (evita loop infinito)\n  if (body.data.key?.fromMe === true) {\n    return [{ json: { skip: true } }];\n  }\n\n  const key = body.data.key || {};\n  remoteJid = key.remoteJid || '';\n  telefono = remoteJid.split('@')[0];\n  mensaje = body.data.message?.conversation ||\n            body.data.message?.extendedTextMessage?.text ||\n            body.data.message?.imageMessage?.caption || '';\n  nombre = body.data.pushName || '';\n} else {\n  telefono = body.telefono || body.from || '';\n  mensaje = body.mensaje || body.message || body.text || '';\n  nombre = body.nombre || body.pushName || '';\n  remoteJid = telefono ? telefono + '@s.whatsapp.net' : '';\n}\n\n// Sanitizar\ntelefono = String(telefono).replace(/[^0-9]/g, '');\nmensaje = String(mensaje).trim().substring(0, 4096);\nnombre = String(nombre).trim().substring(0, 150);\n\nreturn [{\n  json: {\n    telefono: telefono,\n    mensaje: mensaje,\n    nombre: nombre || null,\n    remoteJid: remoteJid\n  }\n}];"
+      }
+    },
+    {
+      "id": "ebeee27e-fc3f-4b33-b507-f4d9ad099390",
+      "name": "Forward a FastAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://fastapi:8000/api/v1/messages",
+        "authentication": "none",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "telefono",
+              "value": "={{ $json.telefono }}"
+            },
+            {
+              "name": "mensaje",
+              "value": "={{ $json.mensaje }}"
+            },
+            {
+              "name": "nombre",
+              "value": "={{ $json.nombre }}"
+            },
+            {
+              "name": "remoteJid",
+              "value": "={{ $json.remoteJid }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ Date.now() }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "allowUnauthorizedCerts": true
+        }
+      }
+    },
+    {
+      "id": "07ed6e19-1983-41de-a0bd-9413abbfefc5",
+      "name": "Responder Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, conversacion_id: $json.conversacion_id, categoria: $json.categoria }) }}"
+      }
+    },
+    {
+      "id": "55d05a57-4e57-4112-818b-2ce818f2d63a",
+      "name": "Enviar Respuesta WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n    const telefono = $node[\"Extraer y Sanitizar\"].json.telefono;\n    const respuesta = item.json.respuesta;\n\n    const evolutionResponse = await this.helpers.httpRequest({\n        method: \"POST\",\n        url: \"http://evolution:8080/message/sendText/timonws\",\n        headers: {\n            \"apikey\": \"evotimon2026\",\n            \"Content-Type\": \"application/json\"\n        },\n        body: {\n            number: telefono,\n            text: respuesta\n        },\n        json: true\n    });\n\n    results.push({\n        json: {\n            success: true,\n            respuesta: respuesta,\n            evolution_response: evolutionResponse,\n            conversacion_id: item.json.conversacion_id,\n            categoria: item.json.categoria\n        }\n    });\n}\n\nreturn results;"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Evolution": {
+      "main": [
+        [
+          {
+            "node": "Extraer y Sanitizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer y Sanitizar": {
+      "main": [
+        [
+          {
+            "node": "Forward a FastAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forward a FastAPI": {
+      "main": [
+        [
+          {
+            "node": "Enviar Respuesta WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Respuesta WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "id": "4b18e4c8-cfac-43a9-8c1a-b8d5b2f56081"
+}

@@ -18,8 +18,8 @@ class TestConfig:
         assert settings.qdrant_vector_size == 768
 
     def test_gemini_settings(self):
-        assert settings.gemini_model == "gemini-2.5-flash"
-        assert settings.gemini_embedding_model == "text-embedding-004"
+        assert settings.gemini_model == "gemini-2.5-flash-lite"
+        assert settings.gemini_embedding_model == "gemini-embedding-002"
 
     def test_rate_limit_settings(self):
         assert settings.rate_limit_max_requests == 10

@@ -40,7 +40,7 @@ class ContextBuilder:
                 rag_context = ""
 
         if objective_tracker:
-            if classification.get("intencion_principal") not in ("SALUDO", "DESPEDIDA", "OTRO"):
+            if classification.get("intencion_principal") not in ("SALUDO", "DESPEDIDA", "INFORMACION", "OTRO"):
                 new_goals = objective_tracker.detect_from_classification(classification, telefono, nombre)
                 if classification.get("intencion_principal") == "COTIZACION":
                     if state_machine and state_machine.domain != "COTIZACION":

@@ -69,7 +69,8 @@ class Generator:
         tool_results = context.get("tool_results", {})
 
         if not tool_results:
-            return self._no_tool_response(intent)
+            mensaje = context.get("mensaje", "")
+            return self._no_tool_response(intent, mensaje)
 
         tool_data = list(tool_results.values())[0] if tool_results else {}
         if not tool_data.get("success"):
@@ -79,17 +80,44 @@ class Generator:
         data = tool_data.get("data", {})
         return self._format_tool_result(intent, data)
 
-    def _no_tool_response(self, intent: str) -> str:
+    def _no_tool_response(self, intent: str, mensaje: str = "") -> str:
         responses = {
-            "SALUDO": "¡Hola! Soy el asistente virtual de MotoServicio Timón 🏍️ ¿En qué puedo ayudarte? Puedo cotizar servicios, agendar citas o ayudarte con un diagnóstico.",
+            "SALUDO": "¡Hola! 🏍️ Bienvenido a MotoServicio Timón. Estamos en Benito Juárez #123, Col. Centro. Horario: Lun-Vie 9:00-18:00, Sáb 9:00-14:00. ¿En qué puedo ayudarte?",
             "DESPEDIDA": "¡Gracias por contactarnos! Que tengas un excelente día. No dudes en escribirnos si necesitas algo más 🏍️",
-            "COTIZACION": "Claro, puedo ayudarte con una cotización. ¿Qué servicio te gustaría cotizar? Tenemos mantenimiento, frenos, llantas, afinación, entre otros.",
+            "COTIZACION": "Claro, puedo ayudarte con una cotización. ¿Qué servicio te gustaría cotizar? Tenemos varios como cambio de aceite, afinación, frenos, llantas, baterías, kit de transmisión, suspensión, entre otros.",
             "AGENDAMIENTO": "Con gusto te ayudo a agendar una cita. ¿Qué servicio necesitas y para qué día te gustaría agendar?",
             "DIAGNOSTICO": "Cuéntame más sobre el problema que presenta tu moto. ¿Qué síntomas has notado?",
-            "QUEJA": "Lamento que hayas tenido una mala experiencia. Cuéntame qué pasó para poder ayudarte a resolverlo.",
-            "INFORMACION": "Estamos ubicados en [dirección]. Nuestro horario es lunes a viernes de 9am a 6pm, sábados de 9am a 2pm. ¿Te gustaría saber el precio de algún servicio?",
+            "QUEJA": "Lamento mucho que hayas tenido una mala experiencia. Voy a registrar tu reporte para que lo revisen. ¿Me puedes dar más detalles de lo que pasó?",
+            "INFORMACION": """🏍️ *MotoServicio Timón* 🏍️
+
+📍 *Ubicación:* Benito Juárez #123, Col. Centro
+🕐 *Horario:* Lun-Vie 9:00-18:00, Sáb 9:00-14:00
+
+*Servicios disponibles:*
+• Cambio de aceite + filtro: $350-$550
+• Afinación menor (hasta 250cc): $350-$530
+• Afinación mayor (250cc+): $530-$800
+• Servicio general 4T: $530-$800
+• Frenos (balatas): $200-$400 c/u
+• Llantas: desde $800 c/u + instalación
+• Baterías: desde $500
+• Kit de transmisión (cadena/sprockets): $600-$1,500
+• Suspensión (horquillas/amortiguadores): $500-$1,200
+• Diagnóstico por escáner: $200-$400
+• Revisión de sistema eléctrico
+• Servicio mayor (10,000-20,000km): consultar
+
+Trabajamos TODAS las marcas (Honda, Yamaha, Suzuki, Kawasaki, BMW, Ducati, KTM, Italika, Bajaj, Vento). ¿Cuál te interesa o qué servicio necesitas?""",
         }
-        return responses.get(intent, "¿En qué puedo ayudarte?")
+
+        if intent == "INFORMACION" and mensaje:
+            msg_lower = mensaje.lower()
+            if "horario" in msg_lower or "abren" in msg_lower or "cierran" in msg_lower:
+                return "🕐 Horario: Lun-Vie 9:00-18:00, Sáb 9:00-14:00. Domingo cerrado."
+            if "dónde" in msg_lower or "donde" in msg_lower or "ubicación" in msg_lower or "ubicacion" in msg_lower or "dirección" in msg_lower or "direccion" in msg_lower:
+                return "📍 Estamos en Benito Juárez #123, Col. Centro."
+
+        return responses.get(intent, "¿En qué puedo ayudarte? Puedo cotizar servicios, agendar citas o ayudarte con un diagnóstico.")
 
     def _format_tool_result(self, intent: str, data: dict) -> str:
         if intent == "COTIZACION":
@@ -131,4 +159,15 @@ class Generator:
                 return "Por los síntomas que mencionas, recomiendo que un mecánico revise la moto. ¿Te gustaría agendar una cita?"
             return data.get("mensaje", "Gracias por la información.")
 
-        return "Gracias. ¿Hay algo más en lo que pueda ayudarte?"
+        elif intent == "INFORMACION":
+            servicios = data.get("servicios", [])
+            if servicios:
+                lines = ["🏍️ *Servicios disponibles:*"]
+                for s in servicios:
+                    precio = f"${float(s.get('precio', 0)):.2f}" if s.get("precio") else "consultar"
+                    lines.append(f"• {s.get('nombre', '')}: {precio}")
+                lines.append("\n¿Cuál te interesa?")
+                return "\n".join(lines)
+            return self._no_tool_response("INFORMACION")
+
+        return "Gracias. ¿Hay algo más en lo que pueda ayudarte? Puedo cotizar servicios, agendar citas o ayudarte con un diagnóstico."

@@ -34,9 +34,17 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("starting_up", app=settings.app_name, version=settings.app_version)
-    await redis_service.connect()
-    await gemini_service.connect()
-    await qdrant_service.connect()
+    services = [
+        ("redis", redis_service.connect),
+        ("gemini", gemini_service.connect),
+        ("qdrant", qdrant_service.connect),
+    ]
+    for name, connect_fn in services:
+        try:
+            await connect_fn()
+            logger.info("service_connected", service=name)
+        except Exception as e:
+            logger.warning("service_connect_failed", service=name, error=str(e))
     yield
     await redis_service.disconnect()
     logger.info("shutting_down")
